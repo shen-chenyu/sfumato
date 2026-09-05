@@ -377,8 +377,8 @@ export default function Studio() {
         <span className="top-note">
           A little less image. A little more imagination.
         </span>
-        <a className="source-link" href="#about">
-          How it draws <ArrowUpRight size={15} />
+        <a className="source-link" href={base || '/'}>
+          数学构造 <ArrowUpRight size={15} />
         </a>
       </header>
       <div className="workspace">

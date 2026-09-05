@@ -1,1 +1,1 @@
-export { default } from './studio';
+export { default } from './construction';

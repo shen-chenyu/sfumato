@@ -18,7 +18,7 @@ createServer(async (req, res) => {
     let path = decodeURIComponent(
       new URL(req.url, 'http://localhost').pathname,
     );
-    if (path.endsWith('/')) path += 'index.html';
+    if (!extname(path)) path = path.replace(/\/$/, '') + '/index.html';
     const file = resolve(root, '.' + path);
     if (!file.startsWith(root + sep)) throw Error();
     const content = await readFile(file);

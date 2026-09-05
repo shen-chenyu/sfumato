@@ -1,4 +1,4 @@
-import { cp, readFile, stat, writeFile } from 'node:fs/promises';
+import { cp, mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 const base = process.env.BASE_PATH || '';
 if (
@@ -16,6 +16,10 @@ if (base)
   await cp(resolve(root, '.' + base, '_next'), resolve(root, '_next'), {
     recursive: true,
   });
+// Export non-root routes without redirecting the prerender request, then
+// provide directory indexes for simple static hosts.
+await mkdir(resolve(root, 'strokes'), { recursive: true });
+await cp(resolve(root, 'strokes.html'), resolve(root, 'strokes/index.html'));
 const html = await readFile(resolve(root, 'index.html'), 'utf8');
 for (const match of html.matchAll(
   /(?:src|href)="(\/[^"]+\.(?:js|css|png|svg))"/g,
@@ -25,7 +29,14 @@ for (const match of html.matchAll(
     throw Error(`Asset lost its host prefix: ${url}`);
   await stat(resolve(root, '.' + url.slice(base.length)));
 }
-for (const file of ['engine.worker.mjs', 'engine.mjs', 'portrait.png'])
+for (const file of [
+  'engine.worker.mjs',
+  'engine.mjs',
+  'portrait.png',
+  'construct.worker.mjs',
+  'construct-engine.mjs',
+  'strokes/index.html',
+])
   await stat(resolve(root, file));
 await writeFile(resolve(root, '.nojekyll'), '');
 console.log(`Static export verified${base ? ` for ${base}` : ''}.`);

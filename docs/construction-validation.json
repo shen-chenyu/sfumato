@@ -1,0 +1,60 @@
+{
+  "source": "public/portrait.png (NASA crop)",
+  "resize": "sharp 160x160, default Lanczos3",
+  "tests": [
+    {
+      "budget": 0,
+      "rmse": 0.18339270680704814,
+      "milliseconds": 57,
+      "curves": 0,
+      "segments": 0,
+      "scalarParameters": 192,
+      "constraints": 64,
+      "iterations": 403,
+      "maxChange": 0.000009939725138741196,
+      "residual": 0.000005592233511320099,
+      "converged": true
+    },
+    {
+      "budget": 10,
+      "rmse": 0.08791244022284181,
+      "milliseconds": 49,
+      "curves": 10,
+      "segments": 100,
+      "scalarParameters": 1592,
+      "constraints": 2007,
+      "iterations": 325,
+      "maxChange": 0.000009902563518460195,
+      "residual": 0.000005546142991530445,
+      "converged": true
+    },
+    {
+      "budget": 40,
+      "rmse": 0.06727981766819649,
+      "milliseconds": 47,
+      "curves": 40,
+      "segments": 199,
+      "scalarParameters": 2978,
+      "constraints": 3242,
+      "iterations": 325,
+      "maxChange": 0.000009902564198471797,
+      "residual": 0.000005546143372558987,
+      "converged": true
+    },
+    {
+      "budget": 68,
+      "rmse": 0.06285774440894652,
+      "milliseconds": 48,
+      "curves": 68,
+      "segments": 240,
+      "scalarParameters": 3552,
+      "constraints": 3767,
+      "iterations": 325,
+      "maxChange": 0.000009902564198083219,
+      "residual": 0.000005546143372781032,
+      "converged": true
+    }
+  ],
+  "recipeRoundTripExact": true,
+  "notes": "RMSE is against the resized source luminance, not a perceptual or anatomy score. Timings are one local run, not a browser benchmark."
+}
