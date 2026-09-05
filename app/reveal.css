@@ -1,0 +1,376 @@
+.reveal-app {
+  max-width: 1280px;
+  margin: auto;
+  padding: 0 40px;
+  color: #304538;
+}
+.reveal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 85px;
+  border-bottom: 1px solid #d4dccd;
+}
+.reveal-header > a:last-child {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 14px;
+  color: #6d7e60;
+}
+.reveal-stage {
+  max-width: 1080px;
+  margin: auto;
+}
+.reveal-heading {
+  text-align: center;
+  padding: 30px 0 24px;
+}
+.reveal-heading .eyebrow {
+  font-size: 12px;
+  color: #8c9a7c;
+  letter-spacing: 3px;
+}
+.reveal-heading h1 {
+  font:
+    32px/1.4 Georgia,
+    'Songti SC',
+    serif;
+  letter-spacing: 0;
+  margin: 12px 0;
+}
+.reveal-heading p {
+  font-size: 14px;
+  color: #7d8d6f;
+  line-height: 1.8;
+  margin: 0;
+}
+.reveal-pictures {
+  display: flex;
+  justify-content: center;
+  gap: 26px;
+}
+.reveal-pictures figure {
+  margin: 0;
+  min-width: 0;
+  width: min(100%, 560px);
+}
+.moment-paper,
+.answer-paper {
+  position: relative;
+  aspect-ratio: 1;
+  background: #faf9f5;
+  border: 1px solid #e2e4d6;
+  box-shadow: 0 15px 40px #31482909;
+}
+.moment-paper canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.answer-paper {
+  padding: 8%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.answer-paper img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #fff;
+}
+.moment-cover {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 14px;
+}
+.question-mark {
+  font:
+    italic 96px Georgia,
+    serif;
+  color: #c7ceb9;
+  line-height: 1;
+  margin-bottom: 12px;
+}
+.moment-cover strong {
+  font:
+    24px Georgia,
+    'Songti SC',
+    serif;
+  color: #576d48;
+}
+.moment-cover p {
+  font-size: 13px;
+  color: #91a17d;
+  margin: 0;
+  text-align: center;
+  padding: 0 15px;
+}
+.start-round {
+  margin-top: 14px;
+  min-width: 160px;
+  height: 45px;
+  background: #344f36;
+  color: #faf9f5;
+}
+.reveal-pictures figcaption {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-top: 13px;
+  font-size: 12px;
+  color: #7c8c6c;
+}
+.reveal-pictures figcaption > span {
+  font-size: 11px;
+  color: #91a17c;
+}
+.reveal-live {
+  max-width: 560px;
+  text-align: center;
+  margin: 18px auto 0;
+}
+.live-count strong {
+  font:
+    38px Georgia,
+    serif;
+  color: #344f36;
+}
+.live-count span {
+  font-size: 12px;
+  color: #93a07e;
+}
+.reveal-meter {
+  height: 3px;
+  background: #dbe3d0;
+  margin: 13px 0 19px;
+  overflow: hidden;
+}
+.reveal-meter > span {
+  display: block;
+  height: 100%;
+  background: #b37550;
+}
+.recognize-button {
+  background: #c46646;
+  color: white;
+  min-width: 245px;
+  height: 48px;
+  font-size: 17px;
+  letter-spacing: 2px;
+  box-shadow: 0 3px 0 #a65136;
+}
+.recognize-button:hover {
+  background: #b95b3e;
+}
+.space-hint {
+  display: block;
+  margin-top: 12px;
+  color: #93a081;
+  font-size: 12px;
+}
+.after-reveal {
+  margin: 27px auto 0;
+}
+.trim-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 36px;
+}
+.trim-actions > span {
+  font-size: 14px;
+  color: #687e56;
+  margin-right: 8px;
+}
+.trim-actions > button {
+  background: transparent;
+}
+.return-moment {
+  font-size: 12px;
+  color: #9e6e4f;
+  padding-left: 8px;
+}
+.moment-exports {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 21px;
+}
+.moment-exports button {
+  font-size: 14px;
+}
+.round-settings {
+  max-width: 650px;
+  margin: 23px auto 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid #d7dfcc;
+  padding-top: 16px;
+  gap: 15px;
+}
+.round-settings > div {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.round-settings button {
+  font-size: 13px;
+  color: #758b61;
+}
+.round-settings .use-sample {
+  font-size: 12px;
+}
+.pace-controls > button:first-child {
+  border: 1px solid #c9d5bb;
+  padding: 7px 12px;
+  border-radius: 20px;
+  background: #e5eadf;
+}
+.reveal-about {
+  max-width: 650px;
+  margin: 23px auto;
+  color: #72865f;
+  font-size: 13px;
+  line-height: 1.8;
+}
+.reveal-about summary {
+  cursor: pointer;
+}
+.reveal-about p {
+  font-size: 13px;
+  color: #8a9a78;
+}
+.reveal-about a {
+  text-decoration: underline;
+}
+.reveal-error {
+  max-width: 650px;
+  margin: 20px auto;
+  padding: 15px;
+  background: #f1dfd2;
+  color: #875238;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  font-size: 14px;
+}
+.reveal-footer {
+  display: flex;
+  justify-content: space-between;
+  margin: 35px 0 0;
+  border-top: 1px solid #d4dccd;
+  padding: 23px 0;
+  font-size: 12px;
+  color: #96a383;
+  gap: 20px;
+}
+.is-revealed figure {
+  flex: 1;
+  max-width: 500px;
+}
+@media (max-width: 700px) {
+  .reveal-app {
+    padding: 0 18px;
+  }
+  .reveal-header {
+    height: 72px;
+  }
+  .reveal-heading {
+    padding: 24px 0 20px;
+  }
+  .reveal-heading h1 {
+    font-size: 26px;
+  }
+  .reveal-heading p {
+    font-size: 13px;
+  }
+  .reveal-heading .eyebrow {
+    font-size: 11px;
+  }
+  .question-mark {
+    font-size: 72px;
+  }
+  .moment-cover strong {
+    font-size: 21px;
+  }
+  .moment-cover p {
+    font-size: 12px;
+  }
+  .reveal-pictures {
+    gap: 12px;
+  }
+  .is-revealed figcaption {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+  .reveal-pictures figcaption {
+    font-size: 11px;
+  }
+  .reveal-pictures figcaption > span {
+    font-size: 10px;
+  }
+  .reveal-live {
+    margin-top: 13px;
+  }
+  .trim-actions {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .moment-exports {
+    gap: 3px;
+    flex-wrap: wrap;
+  }
+  .moment-exports button {
+    font-size: 12px;
+    padding: 0 10px;
+  }
+  .round-settings {
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .round-settings button {
+    font-size: 12px;
+  }
+  .round-settings > div {
+    gap: 5px;
+  }
+  .reveal-footer {
+    margin-top: 25px;
+    font-size: 11px;
+  }
+  .reveal-header > a:last-child {
+    font-size: 12px;
+  }
+  .start-round {
+    height: 40px;
+  }
+}
+
+progress.reveal-meter {
+  display: block;
+  width: 100%;
+  appearance: none;
+  border: 0;
+  color: #b37550;
+}
+progress.reveal-meter::-webkit-progress-bar {
+  background: #dbe3d0;
+}
+progress.reveal-meter::-webkit-progress-value {
+  background: #b37550;
+}
+progress.reveal-meter::-moz-progress-bar {
+  background: #b37550;
+}

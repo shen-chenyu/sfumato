@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
 import './globals.css';
 export const metadata: Metadata = {
-  title: 'Sfumato · editable mathematical portraits',
+  title: 'Sfumato · the moment you recognize it',
   description:
-    'Construct a portrait from explicit curves and harmonic tone. Inspect equations, edit control points, and redraw from a recipe without the original photograph.',
+    'Watch a hidden photograph emerge from mathematical curves. Stop when you recognize it, reveal the original, and see how much you can take away. Photos stay on your device.',
 };
 export default function RootLayout({
   children,

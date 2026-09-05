@@ -2,15 +2,25 @@
 
 **A portrait you can take apart.**
 
-The current local experiment turns a photograph into explicit Bézier curves, two-sided tone samples, and a harmonic reconstruction. Inspect actual equations, move control points, remove a boundary, then save and reimport a recipe that redraws without the original photograph.
+The local homepage is now a small reveal game. A photograph starts hidden and emerges one mathematical boundary at a time. Stop when you think you recognise it, compare with the original, then remove boundaries until you think it has lost too much. Try it with a friend choosing a familiar photograph.
 
 **Local development only; no public demo has been published.** No image generation models, API keys, accounts, or photo uploads.
 
-[中文说明](README.zh-CN.md) · [Construction mathematics and measured results](docs/CONSTRUCTION.md) · [Earlier stroke algorithm](docs/ALGORITHM.md)
+[中文说明](README.zh-CN.md) · [Reveal rules and ordering](docs/REVEAL.md) · [Construction mathematics](docs/CONSTRUCTION.md)
 
-![Source and mathematical reconstructions](docs/construction-study.png)
+![Earlier and revised ordering at ten boundaries](docs/reveal-comparison.png)
 
-The main page opens the construction experiment. The earlier limited-stroke playground remains available at `/strokes/`.
+The game lives at `/`, the equation and control-point editor at `/construct/`, and the earlier stroke playground at `/strokes/`.
+
+## Play a round
+
+1. Start with the sample, or let a friend choose a photo. The original and its filename stay hidden until the round ends.
+2. Choose automatic reveal or manual stepping. Reduced-motion preferences default to manual.
+3. Press **我看出来了** or Space to freeze the frame actually on screen and reveal the source. Reaching the final boundary also reveals the source, without claiming that you recognized it.
+4. Remove or restore boundaries, or return to the original stopping point.
+5. Save the currently displayed picture card or its mathematical recipe. The card and recipe do not embed the original photograph.
+
+This is a subjective perception experiment, not an identity quiz with a verified correct answer. Replaying the same image is explicitly labelled as a replay. A new unknown round needs a new photograph.
 
 ## Try the mathematical construction
 

@@ -18,8 +18,13 @@ if (base)
   });
 // Export non-root routes without redirecting the prerender request, then
 // provide directory indexes for simple static hosts.
-await mkdir(resolve(root, 'strokes'), { recursive: true });
-await cp(resolve(root, 'strokes.html'), resolve(root, 'strokes/index.html'));
+for (const route of ['strokes', 'construct']) {
+  await mkdir(resolve(root, route), { recursive: true });
+  await cp(
+    resolve(root, route + '.html'),
+    resolve(root, route + '/index.html'),
+  );
+}
 const html = await readFile(resolve(root, 'index.html'), 'utf8');
 for (const match of html.matchAll(
   /(?:src|href)="(\/[^"]+\.(?:js|css|png|svg))"/g,
@@ -36,6 +41,8 @@ for (const file of [
   'construct.worker.mjs',
   'construct-engine.mjs',
   'strokes/index.html',
+  'construct/index.html',
+  'reveal-state.mjs',
 ])
   await stat(resolve(root, file));
 await writeFile(resolve(root, '.nojekyll'), '');

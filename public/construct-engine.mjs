@@ -532,3 +532,26 @@ export function moveControlPoint(model, id, index, handle, x, y) {
   }
   return updated;
 }
+
+/** Reveal ordering favors compact central detail over very long boundary chains.
+ * It is an image-space heuristic, not anatomical detection or optimal selection.
+ */
+export function rankForReveal(model) {
+  const curves = model.curves
+    .map((c) => {
+      const points = c.segments.flatMap((s) => [s.controls[0], s.controls[3]]),
+        x = points.reduce((a, p) => a + p[0] / SIZE, 0) / points.length,
+        y = points.reduce((a, p) => a + p[1] / SIZE, 0) / points.length;
+      const focus =
+          1 + 4 * Math.exp(-((x - 0.5) ** 2 + (y - 0.48) ** 2) / 0.065),
+        length = Math.max(1, c.sourceLength ?? points.length);
+      return {
+        ...c,
+        revealPriority:
+          (((c.score ?? 1) / Math.sqrt(length)) * focus) /
+          (1 + 0.1 * c.segments.length),
+      };
+    })
+    .sort((a, b) => b.revealPriority - a.revealPriority || a.id - b.id);
+  return { ...model, curves, ordering: 'compact-center-v1' };
+}

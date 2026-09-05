@@ -391,7 +391,7 @@ export default function Construction() {
           sfumato<span>.</span>
         </a>
         <div>
-          <span className="edition-label">本地实验 / 02</span>
+          <a href={base || '/'}>回到显影游戏</a>
           <a href={`${base}/strokes/`}>
             <ArrowLeft size={14} />
             笔触实验
