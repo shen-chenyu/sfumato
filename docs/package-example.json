@@ -1,0 +1,15 @@
+{
+  "source": "public/portrait.png (NASA, public domain)",
+  "packageVersion": "0.1.0",
+  "stats": {
+    "curves": 62,
+    "segments": 215,
+    "scalarParameters": 3202,
+    "constraints": 3532,
+    "iterations": 324,
+    "maxChange": 0.000009964970756587421,
+    "residual": 0.000005581053594827523,
+    "converged": true
+  },
+  "explanation": "You, in 215 cubic Bézier segments and 64 tone anchors. 3,202 stored geometry and tone values redraw this portrait without the original photograph. Mathematical profile: complexity 67.1/100, composition symmetry 49.4/100, tonal richness 80.2/100. Fixed-scale indices of the current image construction."
+}

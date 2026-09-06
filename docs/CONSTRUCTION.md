@@ -1,6 +1,8 @@
 # Explicit curves and harmonic tone
 
-This is the second local experiment. Its success criterion is deliberately concrete: a serialized construction must redraw without the source photograph, and editing that construction must change the reconstructed image.
+[中文](CONSTRUCTION.zh-CN.md)
+
+Sfumato uses an explicit, replayable construction: a serialized construction must redraw without the source photograph, and editing that construction must change the reconstructed image.
 
 ![Source and reconstructions with increasing boundary budgets](construction-study.png)
 
@@ -75,3 +77,7 @@ These are not 10 or 40 individual cubic equations: chain and segment counts are 
 5. Add surface inference only with explicit assumptions and uncertainty. A single view cannot uniquely establish the body's 3D shape and lighting.
 
 The interface and numerical implementation have compilation and automated algorithm checks. Browser interaction QA and the optional WebMCP registry have not been tested in a supporting browser context in this iteration.
+
+The solver caches free-cell neighbour stencils in the original red/black order. Regression fixtures preserve pre-optimization pixels and convergence statistics at sparse and dense budgets. Chains are ranked before fitting, so discarded candidates do not incur Bézier fitting work. The public package and the browser worker use the same `public/portrait.mjs` entry point, including resizing and recipe replay.
+
+The [mathematical profile](SCORING.md) adds versioned complexity, symmetry and tonal-richness indices derived from the same recipe.

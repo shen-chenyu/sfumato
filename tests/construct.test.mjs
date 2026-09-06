@@ -16,7 +16,7 @@ const subject = () =>
   pixels((x, y) =>
     Math.hypot((x - 80) / 0.8, y - 75) < 43 ? 70 + Math.round(x * 0.5) : 230,
   );
-test('cubic coefficients reproduce the curve including endpoints', () => {
+await test('cubic coefficients reproduce the curve including endpoints', () => {
   const p = [
       [2, 3],
       [7, 19],
@@ -32,7 +32,7 @@ test('cubic coefficients reproduce the curve including endpoints', () => {
         ) < 1e-10,
       );
 });
-test('adaptive fitting preserves endpoints and the measured tolerance on a difficult curve', () => {
+await test('adaptive fitting preserves endpoints and the measured tolerance on a difficult curve', () => {
   const points = Array.from({ length: 120 }, (_, i) => [
       i,
       30 * Math.sin(i * 0.11),
@@ -54,14 +54,14 @@ test('adaptive fitting preserves endpoints and the measured tolerance on a diffi
   );
   assert.ok(cusp.every((p) => p.maxError <= 0.10000001));
 });
-test('uniform input produces no invented curves and harmonic reconstruction stays constant', () => {
+await test('uniform input produces no invented curves and harmonic reconstruction stays constant', () => {
   const m = construct(pixels(() => 153));
   assert.equal(m.curves.length, 0);
   const r = reconstruct(m);
   assert.ok(r.stats.converged);
   for (let i = 0; i < r.pixels.length; i += 4) assert.equal(r.pixels[i], 153);
 });
-test('the serialized construction redraws without a photograph', () => {
+await test('the serialized construction redraws without a photograph', () => {
   const m = construct(subject()),
     a = reconstruct(m),
     b = reconstruct(JSON.parse(JSON.stringify(m)));
@@ -71,7 +71,7 @@ test('the serialized construction redraws without a photograph', () => {
   assert.ok(!('pixels' in m));
   assert.ok(!('gray' in m));
 });
-test('removing and editing a curve alter the solve without resampling the input', () => {
+await test('removing and editing a curve alter the solve without resampling the input', () => {
   const m = construct(subject()),
     a = reconstruct(m),
     deleted = reconstruct(m, { excluded: [m.curves[0].id] }),
@@ -81,7 +81,7 @@ test('removing and editing a curve alter the solve without resampling the input'
   assert.notDeepEqual(a.pixels, reconstruct(edited).pixels);
   assert.deepEqual(a.pixels, reconstruct(m).pixels);
 });
-test('untrusted recipes reject invalid geometry, tone, duplicate IDs and excessive work', () => {
+await test('untrusted recipes reject invalid geometry, tone, duplicate IDs and excessive work', () => {
   const m = construct(subject());
   for (const edit of [
     (x) => (x.curves[0].segments[0].controls[0][0] = Infinity),
@@ -97,7 +97,7 @@ test('untrusted recipes reject invalid geometry, tone, duplicate IDs and excessi
   assert.throws(() => reconstruct(m, { iterations: 1e9 }));
 });
 
-test('moving a shared endpoint preserves curve-chain connections without mutating the original', async () => {
+await test('moving a shared endpoint preserves curve-chain connections without mutating the original', async () => {
   const { moveControlPoint } = await import('../public/construct-engine.mjs');
   const tone = [
       [0.2, 0.3, 0.4],
@@ -138,7 +138,7 @@ test('moving a shared endpoint preserves curve-chain connections without mutatin
   assert.throws(() => moveControlPoint(m, 7, 0, 8, 0, 0));
 });
 
-test('white, black and transparent sources keep valid normalized constraints', () => {
+await test('white, black and transparent sources keep valid normalized constraints', () => {
   for (const input of [
     pixels(() => 255),
     pixels(() => 0),

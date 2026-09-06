@@ -1,46 +1,80 @@
-# Sfumato · 认出的瞬间
+# Sfumato
 
-当前版本仅在本地开发，尚未发布。
+**多少数学，能描绘你？**
 
-[English](README.md) · [构造算法与实测结果](docs/CONSTRUCTION.md)
+输入图片，得到重建肖像、可编辑的曲线 SVG，以及不需要原照片就能重新画图的数学配方。算法用三次 Bézier 曲线拟合明暗边界，再从曲线两侧的采样求解明暗。
 
-![原图与不同曲线预算下的重建](docs/construction-study.png)
+每张照片还会得到一份“数学画像评分”：数学复杂度、构图对称度、明暗丰富度，采用 0–100 固定尺度。卡片把评分与真实曲线、数值统计和一段具体方程放在一起。所有指标从配方计算。[评分模型与公式](docs/SCORING.md)
 
-首页现在是显影游戏：让朋友选一张你熟悉的照片，原图先藏起来。画面逐条显影，按“我看出来了”或空格停在当前这一帧，再揭晓原图。之后可以逐条删减、加回，或者回到原先按停的瞬间。
+![数学自画像：真实曲线、数值统计与具体方程](docs/math-portrait.zh-CN.png)
 
-支持自动显影和手动逐条看，可以保存当前画面的小卡片和数学配方。没有标准答案或虚构排行榜；认出只是你的主观判断。已有样例不会冒充每次都不同的新谜题。
+![原照片、曲线构造和重建肖像](docs/package-example.png)
 
-[本轮排序对照与限制](docs/REVEAL.md)
+无图像生成 AI、API key、账号或图片上传。独立 JavaScript 包**没有运行时依赖**，可以在 Node.js 和浏览器中使用。
 
-数学构造实验保留在 `/construct/`：提取明暗边界，拟合明确的三次 Bézier 曲线，再用曲线两侧的明暗样本和 64 个粗略锚点求解图像。保存的数学配方可以在不读取原照片的情况下重新画出肖像。
+[English](README.md) · [包接口](packages/sfumato/README.zh-CN.md) · [算法原理](docs/CONSTRUCTION.zh-CN.md)
 
-可以点选曲线查看实际方程、拖动控制点、删除整条边界、保存与重新导入配方。移动连接处的控制点时，相邻曲线段保持相连。数值坐标输入和方向键也可以操作。
+## 使用包
 
-目前识别的是图像边界，并未识别出人体部位。一条边界可能由多段三次曲线组成，界面会分别显示数量；它不是完美的三维人体重建，也不是已经证明最简的描述。
+```js
+import { createPortrait, redraw } from '@shen-chenyu/sfumato';
 
-旧版“几笔才够”的笔触实验保留在 `/strokes/`，可以通过首页右上角进入。
+const portrait = createPortrait({ data, width, height }, {
+  language: 'zh-CN',
+});
 
-这不是在照片上叠数学公式。它先构造许多可能的曲线，再逐步挑选能够解释剩余明暗信息的笔触。没有图像生成模型，没有 API key；照片只在浏览器里处理。
+portrait.image;        // 160×160 RGBA 肖像
+portrait.svg;          // 可编辑的曲线图
+portrait.explanation;  // 来自实际计算的简短解释
+portrait.recipe;       // 可保存为 JSON，无原照片像素
+portrait.math;         // 曲线数量、真实方程和 math.scores 三项评分
+portrait.card;         // 可保存的数学自画像 SVG 卡片
 
-可以这样玩：
+const restored = redraw(portrait.recipe);
+```
 
-- **只准画 100 笔**：已经认得出是谁了吗？
-- **倒着看**：从 900 笔退回 300 笔，哪一张更有表现力？
-- **你决定停笔**：点 “This is the moment” 记住当前笔数，再导出作品。
-- **换一种手法**：石墨、蚀刻、柔墨，同一张脸做三种取舍。
-- **让它随机选笔**：对照“每一步选收益最大的一笔”，看看差异。
-- **告诉它看哪里**：点选关注区域，改变细节的权重。
-- **把解释带走**：PNG 是图，SVG 可以编辑，JSON 配方包含笔画与实际误差变化。
+可以调整曲线数量和拟合精度，也可以改动控制点后重新生成图像。有意思的是：一张图真的由这些曲线和约束构成，而你可以拆开、修改、重画它。
 
-先用光线清楚的近景肖像试试。小脸和杂乱背景比较难。示例来自 NASA 的公开领域照片，不包含作者的私人照片。
+目前没有发布到 npm。使用 Node 22，在仓库根目录生成本地安装包：
 
-需要 Node.js 22.13 或更新版本：
+```sh
+git clone https://github.com/shen-chenyu/sfumato.git
+cd sfumato
+npm run package:pack
+```
+
+生成 `shen-chenyu-sfumato-0.1.0.tgz`，可在其他项目中用 `npm install /路径/该文件.tgz` 安装。打包本身无需安装网页依赖。
+
+## 用自己的图片试试
+
+核心包接收解码后的 RGBA 像素。完整 Node 示例使用 Sharp 读取图片、保存 PNG：
+
+```sh
+npm run package:build
+cd examples/node
+npm install
+node portrait.mjs ../../public/portrait.png output
+```
+
+输出肖像 PNG、曲线 SVG、配方 JSON、解释文本、数学统计，以及 SVG/PNG 数学自画像卡片。浏览器 canvas 用法见[接口说明](packages/sfumato/README.zh-CN.md)。
+
+## 本地网页
 
 ```sh
 npm ci
 npm run dev
 ```
 
-运行 `npm test` 验证数值性质；`npm run build` 生成 `dist/client` 静态网页。Fork 后，在 GitHub 的 Settings → Pages 中选择 GitHub Actions，然后运行 Pages 工作流，就能让朋友直接打开试玩。
+首页可以上传图片、查看曲线方程、调整控制点和导出结果。`/construct/` 是同一工作区的入口，`/strokes/` 保留笔触选择实验。
 
-它目前是一个诚实的计算绘画实验，还没有达芬奇对解剖、体积与表情的理解。界面里的百分比只是对明暗目标的解释程度，不是美感评分。数学引擎独立放在 `public/engine.mjs`，欢迎换一种画笔、目标函数或取舍方法，让它长出更好的品味。
+目前构造的是二维明暗边界，不识别解剖结构。明暗求解分辨率为 160×160，放大输出不会增加细节；SVG 是曲线图，PNG 才包含重建明暗。算法与数值记录见[说明](docs/CONSTRUCTION.zh-CN.md)。
+
+[连续曲面研究](research/surface/README.md) 单独保留，不属于包的使用流程。示例使用 NASA 公开领域照片，授权见 [CREDITS](CREDITS.md)。代码采用 MIT 许可证。
+
+首页支持中英文切换，可直接保存数学自画像 PNG / SVG 卡片。展开编辑区后可修改控制点、撤销和恢复构造；网页与 package 可以互相导入配方。Node 文件示例的最后一个可选参数为语言，例如：
+
+```sh
+node portrait.mjs ../../public/portrait.png output zh-CN
+```
+
+[版本说明（中英双语）](docs/RELEASE.md)。尚未发布 npm 包或托管演示；Pages 工作流仅手动触发，推送代码不会自动部署网站。

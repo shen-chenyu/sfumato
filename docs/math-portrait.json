@@ -1,0 +1,63 @@
+{
+  "boundaryChains": 62,
+  "cubicSegments": 215,
+  "coordinatePolynomials": 430,
+  "geometryScalars": 1720,
+  "curveToneSamples": 1290,
+  "toneAnchors": 64,
+  "anchorScalars": 192,
+  "storedScalars": 3202,
+  "recipeBytes": 71586,
+  "scores": {
+    "version": "sfumato-profile-1",
+    "complexity": {
+      "value": 67.1,
+      "segments": 215
+    },
+    "symmetry": {
+      "value": 49.4,
+      "axis": 79.5,
+      "gridSize": 64,
+      "occupiedCells": 1452
+    },
+    "tone": {
+      "value": 80.2,
+      "entropyBits": 3.2095752902507697,
+      "histogram": [
+        7,
+        0,
+        1,
+        2,
+        1,
+        1,
+        3,
+        2,
+        6,
+        1,
+        4,
+        12,
+        16,
+        7,
+        1,
+        0
+      ]
+    }
+  },
+  "example": {
+    "curveId": 50,
+    "segment": 8,
+    "x": [
+      57,
+      36.43779204254395,
+      -5.626865403942205,
+      3.1890733613982434
+    ],
+    "y": [
+      129,
+      0,
+      14.583760439618146,
+      -13.583760439618118
+    ]
+  },
+  "summary": "这张照片里的你，被写成了 215 段三次 Bézier 曲线、64 个明暗锚点。配方保存 3,202 个几何与明暗数值，就能在不读取原照片的情况下重画这幅肖像。 数学画像评分：复杂度 67.1/100，构图对称度 49.4/100，明暗丰富度 80.2/100。评分针对当前图像构造，采用固定尺度。"
+}

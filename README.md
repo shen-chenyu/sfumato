@@ -1,86 +1,84 @@
 # Sfumato
 
-**A portrait you can take apart.**
+**How much math describes you?**
 
-The local homepage is now a small reveal game. A photograph starts hidden and emerges one mathematical boundary at a time. Stop when you think you recognise it, compare with the original, then remove boundaries until you think it has lost too much. Try it with a friend choosing a familiar photograph.
+Turn an image into a mathematical portrait. It fits Bézier curves to brightness boundaries, then reconstructs tone from those curves. You get an image, editable vector lines, and a recipe that can redraw the portrait without the original photograph.
 
-**Local development only; no public demo has been published.** No image generation models, API keys, accounts, or photo uploads.
+Each image gets a mathematical profile: complexity, composition symmetry and tonal richness, scored from 0–100. The portrait card pairs these indices with the actual curves, stored-value counts and a real equation. [Scoring model](docs/SCORING.md)
 
-[中文说明](README.zh-CN.md) · [Reveal rules and ordering](docs/REVEAL.md) · [Construction mathematics](docs/CONSTRUCTION.md)
+![A mathematical self-portrait with measured counts and a real equation](docs/math-portrait.png)
 
-![Earlier and revised ordering at ten boundaries](docs/reveal-comparison.png)
+![A photograph, its mathematical curves, and the reconstructed portrait](docs/package-example.png)
 
-The game lives at `/`, the equation and control-point editor at `/construct/`, and the earlier stroke playground at `/strokes/`.
+No image AI, API keys, accounts, or photo uploads. The JavaScript package has **zero runtime dependencies** and works in Node.js and browsers.
 
-## Play a round
+[中文](README.zh-CN.md) · [Package API](packages/sfumato/README.md) · [How it works](docs/CONSTRUCTION.md) · [Release notes / 版本说明](docs/RELEASE.md)
 
-1. Start with the sample, or let a friend choose a photo. The original and its filename stay hidden until the round ends.
-2. Choose automatic reveal or manual stepping. Reduced-motion preferences default to manual.
-3. Press **我看出来了** or Space to freeze the frame actually on screen and reveal the source. Reaching the final boundary also reveals the source, without claiming that you recognized it.
-4. Remove or restore boundaries, or return to the original stopping point.
-5. Save the currently displayed picture card or its mathematical recipe. The card and recipe do not embed the original photograph.
+## The package
 
-This is a subjective perception experiment, not an identity quiz with a verified correct answer. Replaying the same image is explicitly labelled as a replay. A new unknown round needs a new photograph.
+```js
+import { createPortrait, redraw } from '@shen-chenyu/sfumato';
 
-## Try the mathematical construction
+const portrait = createPortrait({ data, width, height }); // decoded RGBA pixels
 
-- Select a boundary and inspect a cubic segment's real x(t) and y(t) equations.
-- Drag control points or edit their coordinates; tone is solved again using the edited geometry.
-- Remove a boundary and observe what changes. Reset restores the original construction.
-- Lower the boundary budget to reveal how the picture depends on its constraints.
-- Save the JSON recipe, reload the page and import it. No photograph is required for reconstruction.
-- Export the reconstructed portrait as PNG or its curve geometry as SVG.
+portrait.image;        // reconstructed portrait, 160×160 RGBA
+portrait.svg;          // editable curve drawing
+portrait.explanation;  // what was actually constructed
+portrait.recipe;       // save as JSON; no source photograph inside
+portrait.math;         // counts, an example equation and math.scores
+portrait.card;         // mathematical self-portrait as a standalone SVG
 
-These are detected **image-brightness boundaries**, not recognized anatomical parts. A chain can require several cubic segments; the interface shows both counts and the stored geometric/tone scalar count. The 2000px PNG comes from a 160px analysis grid. See [the limitations and validation](docs/CONSTRUCTION.md).
+const restored = redraw(portrait.recipe);
+```
 
-## Things to try in the earlier stroke experiment
+Use fewer boundary chains, change the fitting tolerance, or edit a curve and solve the tone again. The interest is in seeing an image emerge from a construction you can inspect and change.
 
-- **The 100-stroke challenge.** Can you recognise the person before the face is fully drawn?
-- **Find your “enough”.** Pause, scrub backwards, choose a stopping point. More marks are not always more expressive. Bookmark it with “This is the moment.”
-- **Give it a different hand.** Try graphite, narrow etching, or soft ink on the same image.
-- **Break its judgment.** Compare greedy selection with a seeded random ordering. Random marks must still improve the drawing objective.
-- **Move its attention.** Click a detail to give it more weight. Keyboard users can focus the canvas and use arrow keys, then Enter.
-- **Keep the drawing and the reasoning.** Export a 2000px PNG, editable SVG, or JSON recipe with selected curves and per-stroke error reductions.
+The package is not published to npm. Build a local archive from this repository with Node 22:
 
-Try a close portrait with clear side lighting first. Small faces and busy backgrounds are harder. The bundled subject is a cropped public-domain NASA photograph of Eileen Collins.
+```sh
+git clone https://github.com/shen-chenyu/sfumato.git
+cd sfumato
+npm run package:pack
+# Install shen-chenyu-sfumato-0.1.0.tgz in another project.
+```
 
-## Run locally
+Building the package does not require installing the website dependencies. The archive contains the standalone engine, API, types and license.
 
-Node.js **22.13 or newer** is required; Node 22 is used in CI.
+## Try it on an image file
+
+The core accepts pixels; this complete Node example uses Sharp to read a photo and save PNG:
+
+```sh
+npm run package:build
+cd examples/node
+npm install
+node portrait.mjs ../../public/portrait.png output
+```
+
+It writes `portrait.png`, `curves.svg`, `recipe.json`, `explanation.txt`, `math.json`, and a mathematical self-portrait card as SVG and PNG. See the [API guide](packages/sfumato/README.md) for browser canvas usage and editable recipes.
+
+## The browser demo
 
 ```sh
 npm ci
 npm run dev
 ```
 
-Open the local address printed in your terminal. Choose a photograph or drag one onto the page. After the page loads, computation happens entirely on your device, in a Web Worker.
+Choose English or Chinese, upload an image, and save a mathematical self-portrait card as PNG or SVG. Expand the editor to inspect actual equations and edit control points. Recipe JSON imports and exports are compatible with the package. `/` and `/construct/` open the construction workspace; `/strokes/` contains an earlier stroke-selection study. Everything runs locally in your browser.
 
 ```sh
-npm test          # numerical and determinism checks
+npm test          # engine and package checks
 npm run typecheck
-npm run build     # static output in dist/client
-npm start         # serve that output on localhost:4173
+npm run lint
+npm run build     # static demo in dist/client
 ```
 
-## The earlier stroke engine
+## Model limits
 
-The engine estimates local image structure, constructs thousands of tapered curves, and chooses useful marks through a positive, sparse greedy search. Every mark has a measurable benefit and a small complexity cost. A two-scale objective balances local edges with broad tone. See [the algorithm](docs/ALGORITHM.md) for the equations and [engine.mjs](public/engine.mjs) for the dependency-free implementation.
+This draws image boundaries; it does not understand facial anatomy or recover true 3D shape. Tone is solved on a 160×160 grid. Enlarging the result does not add detail, and the curve-only SVG differs from the tonal image. One boundary can require multiple cubic segments. The [mathematical notes](docs/CONSTRUCTION.md) explain the method and its measurements.
 
-This is a drawing experiment, not a reconstruction of Leonardo's artistic judgment. It does not understand facial anatomy, estimate lighting in 3D, or invent missing details. The percentage in the interface is a drawing-error reduction, **not a beauty or identity score**. Screen and SVG rendering approximate the numerical stroke masks.
+An optional [surface research experiment](research/surface/README.md) is retained separately and is not part of the package or required to use it.
 
-The browser version is intentionally a small standalone engine. Unlike the earlier Python research prototype, it uses no face landmarks and performs no coefficient refitting or stroke deletion; this lets every intermediate drawing replay as a simple growing sequence.
+MIT licensed. The example is a public-domain NASA photograph; see [credits](CREDITS.md). Contributions to the algorithm and rendering are welcome. See [contributing](CONTRIBUTING.md) and [privacy](PRIVACY.md).
 
-## Fork it and let others play
-
-The included GitHub Pages workflow builds the static site and sets the repository subpath automatically. In your fork, go to **Settings → Pages → Build and deployment → Source: GitHub Actions**, then run the **Pages** workflow. No secrets or backend are needed. Update the project links for your fork.
-
-For a custom static host, upload `dist/client` after `npm run build`. For a subdirectory host, build with `BASE_PATH=/your-path`. The `.openai/hosting.json` file identifies the original author's separate Sites preview; it is not needed for local development or GitHub Pages. Do not reuse its project ID for your own Sites deployment.
-
-## Make it yours
-
-- Change `buildCandidates` to invent new drawing gestures.
-- Change `analyze` to experiment with attention and tone.
-- Add a new objective or compare selection strategies.
-- Share an image with its recipe, and explain what surprised you.
-
-Please read [CONTRIBUTING](CONTRIBUTING.md), [privacy](PRIVACY.md), and [credits](CREDITS.md). Code is MIT licensed. Example imagery has its own public-domain attribution. No private photographs are included.
+The npm package and hosted demo have not been released. A manual GitHub Pages workflow is included for a future release or your own copy; pushing code does not deploy the site.

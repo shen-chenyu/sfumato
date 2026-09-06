@@ -39,3 +39,10 @@ next-env.d.ts
 
 *.tsbuildinfo
 *.tgz
+__pycache__/
+*.pyc
+/packages/sfumato/dist/
+/packages/sfumato/LICENSE
+**/node_modules/
+
+/examples/node/output/

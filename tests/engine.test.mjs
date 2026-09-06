@@ -14,17 +14,17 @@ const pixels = (fn) =>
     i % 4 === 3 ? 255 : fn(Math.floor(i / 4) % SIZE, Math.floor(i / 4 / SIZE)),
   );
 const near = (a, b) => assert.ok(Math.abs(a - b) < 1e-7, `${a} != ${b}`);
-test('constant images remain constant after smoothing', () => {
+await test('constant images remain constant after smoothing', () => {
   for (const v of [0, 0.17, 1])
     for (const x of blur(new Float64Array(49).fill(v), 2, 7)) near(x, v);
 });
-test('empty paper chooses no decorative marks', () => {
+await test('empty paper chooses no decorative marks', () => {
   const r = generate(pixels(() => 255));
   assert.equal(r.strokes.length, 0);
   assert.equal(r.initialLoss, 0);
   assert.equal(r.finalLoss, 0);
 });
-test('bad inputs and settings fail explicitly', () => {
+await test('bad inputs and settings fail explicitly', () => {
   assert.throws(() => analyze([]));
   assert.throws(() =>
     generate(
@@ -45,7 +45,7 @@ test('bad inputs and settings fail explicitly', () => {
     ),
   );
 });
-test('lazy search matches exhaustive greedy search and independently replayed error', () => {
+await test('lazy search matches exhaustive greedy search and independently replayed error', () => {
   const weights = Float64Array.from([1, 2, 3, 1]);
   const target = Float64Array.from([0.7, 0.5, 0.4, 0.9]);
   const pool = [
@@ -84,7 +84,7 @@ test('lazy search matches exhaustive greedy search and independently replayed er
     residual.reduce((a, v, i) => a + weights[i] * v * v, 0),
   );
 });
-test('a drawing is deterministic, finite and replayable in every hand', () => {
+await test('a drawing is deterministic, finite and replayable in every hand', () => {
   const input = pixels((x, y) =>
     Math.hypot(x - 78, y - 70) < 37 ? 60 + Math.round(x / 2) : 250,
   );
@@ -105,7 +105,7 @@ test('a drawing is deterministic, finite and replayable in every hand', () => {
     assert.ok(!output.includes('<image'));
   }
 });
-test('random order is seeded and still only accepts useful strokes', () => {
+await test('random order is seeded and still only accepts useful strokes', () => {
   const input = pixels((x, y) =>
     x > 30 && y > 30 && x < 120 && y < 120 ? 120 : 255,
   );

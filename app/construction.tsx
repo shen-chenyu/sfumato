@@ -1,373 +1,458 @@
 'use client';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { flushSync } from 'react-dom';
-import { registerConstructionTools } from '../lib/construction-tools';
 import {
-  ArrowDownToLine,
-  ArrowLeft,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import {
+  Download,
+  Upload,
   FileJson,
   RotateCcw,
-  Trash2,
-  Upload,
-  Move,
   Undo2,
+  Trash2,
+  LoaderCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  moveControlPoint,
+  describeMath,
+  toMathCard,
+  toSVG,
   polynomial,
+} from '../public/portrait.mjs';
+import type { Recipe, Portrait } from '../public/portrait.mjs';
+import {
+  moveControlPoint,
   validateConstruction,
 } from '../public/construct-engine.mjs';
+import { registerConstructionTools } from '../lib/construction-tools';
 import './construction.css';
-type Segment = {
-  controls: number[][];
-  tones: number[][];
-  maxError?: number;
-  rmsError?: number;
-  samples?: number;
-  edited?: boolean;
-};
-type Curve = {
-  id: number;
-  segments: Segment[];
-  score?: number;
-  sourceLength?: number;
-};
-type Model = {
-  version: string;
-  size: number;
-  tolerance?: number;
-  curves: Curve[];
-  anchors: { x: number; y: number; value: number }[];
-  description?: string;
-};
-type Stats = {
-  curves: number;
-  segments: number;
-  scalarParameters: number;
-  constraints: number;
-  iterations: number;
-  residual: number;
-  converged: boolean;
-};
-const base = process.env.NEXT_PUBLIC_BASE_PATH || '',
-  sample = `${base}/portrait.png`;
+
+type Language = 'en' | 'zh-CN';
+type Edit = { recipe: Recipe; limit: number; excluded: number[] };
+type Selection = { id: number; segment: number } | null;
+type Operation =
+  | {
+      id: number;
+      type: 'create';
+      image: { data: Uint8ClampedArray; width: number; height: number };
+    }
+  | { id: number; type: 'redraw'; recipe: Recipe };
+const base = process.env.NEXT_PUBLIC_BASE_PATH || '';
+const sample = `${base}/portrait.png`;
 const path = (p: number[][]) =>
   `M${p[0].join(' ')} C${p
     .slice(1)
     .map((v) => v.join(' '))
     .join(' ')}`;
-function save(blob: Blob, name: string) {
+function save(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob),
-    a = document.createElement('a');
-  a.href = url;
-  a.download = name;
-  a.click();
+    link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
   setTimeout(() => URL.revokeObjectURL(url), 1500);
 }
-function equation(p: number[]) {
-  return p
+function equation(values: number[]) {
+  return values
     .map(
-      (v, i) =>
-        `${i ? (v < 0 ? ' − ' : ' + ') : v < 0 ? '−' : ''}${Math.abs(v).toFixed(3)}${i === 1 ? 't' : i === 2 ? 't²' : i === 3 ? 't³' : ''}`,
+      (n, i) =>
+        `${i ? (n < 0 ? ' − ' : ' + ') : n < 0 ? '−' : ''}${Math.abs(Number(n.toFixed(3)))}${['', 't', 't²', 't³'][i]}`,
     )
     .join('');
 }
+function effective(edit: Edit): Recipe {
+  return {
+    ...edit.recipe,
+    construction: {
+      ...edit.recipe.construction,
+      curves: edit.recipe.construction.curves
+        .slice(0, edit.limit)
+        .filter((c) => !edit.excluded.includes(c.id)),
+    },
+  };
+}
+const errors: Record<string, [string, string]> = {
+  image: [
+    '无法读取图片，请使用 JPG、PNG、WebP 或 AVIF。',
+    'Cannot decode the image. Use JPG, PNG, WebP or AVIF.',
+  ],
+  size: [
+    '请选择小于 20 MB、5000 万像素以内的图片。',
+    'Choose an image below 20 MB and 50 megapixels.',
+  ],
+  canvas: ['浏览器无法打开画布。', 'This browser could not open a canvas.'],
+  worker: [
+    '计算中断，请重新打开图片或恢复构造。',
+    'Computation was interrupted. Reopen the image or reset the construction.',
+  ],
+  recipe: [
+    '无法读取配方。请选择本项目导出的 JSON 文件（小于 4 MB）。',
+    'Cannot read the recipe. Choose a Sfumato JSON export below 4 MB.',
+  ],
+  export: [
+    '无法保存图片，请先保存 SVG，或稍后重试。',
+    'Could not save the image. Save the SVG or try again.',
+  ],
+};
+
 export default function Construction() {
-  const [source, setSource] = useState<string | null>(sample),
-    [name, setName] = useState('NASA · Eileen Collins'),
-    [model, setModel] = useState<Model | null>(null),
-    [budget, setBudget] = useState(40),
-    [excluded, setExcluded] = useState<number[]>([]),
-    [selected, setSelected] = useState<{ id: number; segment: number } | null>(
-      null,
-    ),
-    [view, setView] = useState('construction'),
-    [stats, setStats] = useState<Stats | null>(null),
-    [busy, setBusy] = useState(true),
-    [solving, setSolving] = useState(false),
-    [error, setError] = useState(''),
-    [message, setMessage] = useState(''),
-    [revision, setRevision] = useState(0);
+  const [language, setLanguage] = useState<Language>('zh-CN');
+  const t = (zh: string, en: string) => (language === 'zh-CN' ? zh : en);
+  const [source, setSource] = useState<string | null>(sample);
+  const [name, setName] = useState('NASA · Eileen Collins');
+  const [result, setResult] = useState<Portrait | null>(null);
+  const [edit, setEdit] = useState<Edit | null>(null);
+  const [selected, setSelected] = useState<Selection>(null);
+  const [view, setView] = useState('curves');
+  const [operation, setOperation] = useState<Operation | null>(null);
+  const [decoding, setDecoding] = useState(true);
+  const [exporting, setExporting] = useState(false);
+  const [error, setError] = useState('');
+  const [editing, setEditing] = useState(false);
+  const [undoCount, setUndoCount] = useState(0);
+  const editRef = useRef<Edit | null>(null),
+    baseline = useRef<Edit | null>(null);
+  const history = useRef<Edit[]>([]),
+    sequence = useRef(0);
+  const objectUrl = useRef<string | null>(null),
+    dragging = useRef<number | null>(null);
   const imageInput = useRef<HTMLInputElement>(null),
-    recipeInput = useRef<HTMLInputElement>(null),
-    canvas = useRef<HTMLCanvasElement>(null),
-    original = useRef<HTMLCanvasElement | null>(null),
-    baseline = useRef<Model | null>(null),
-    objectUrl = useRef<string | null>(null),
-    drag = useRef<{ id: number; segment: number; handle: number } | null>(null),
-    lastPixels = useRef<Uint8ClampedArray | null>(null);
-  useEffect(() => {
-    if (!source) return;
-    let canceled = false;
-    const worker = new Worker(`${base}/construct.worker.mjs`, {
-        type: 'module',
-      }),
-      img = new window.Image();
-    // Replacing the input starts a new external numerical job.
-    // oxlint-disable-next-line react/react-compiler
-    setBusy(true);
+    recipeInput = useRef<HTMLInputElement>(null);
+  const canvas = useRef<HTMLCanvasElement>(null);
+  const busy = decoding || operation !== null;
+  const ready = !!result && !busy && !error;
+  const displayRecipe = useMemo(
+    () => (result ? { ...result.recipe, language } : null),
+    [result, language],
+  );
+  const math = useMemo(
+    () => (displayRecipe ? describeMath(displayRecipe) : null),
+    [displayRecipe],
+  );
+  const active = edit ? effective(edit).construction.curves : [];
+  const curve = active.find((c) => c.id === selected?.id);
+  const segment = curve?.segments[selected?.segment ?? 0];
+  const coefficients = segment ? polynomial(segment.controls) : null;
+
+  const loadSource = useCallback((url: string, label: string) => {
+    const id = ++sequence.current;
+    setOperation(null);
+    setDecoding(true);
     setError('');
-    setStats(null);
+    setSource(url);
+    setName(label);
+    setResult(null);
+    setEdit(null);
+    editRef.current = null;
+    baseline.current = null;
+    history.current = [];
+    setUndoCount(0);
     setSelected(null);
-    worker.onmessage = ({ data }) => {
-      if (canceled) return;
-      if (data.type === 'error') {
-        setError(data.message);
-        setBusy(false);
+    const image = new window.Image();
+    image.onload = () => {
+      if (sequence.current !== id) return;
+      if (image.naturalWidth * image.naturalHeight > 50_000_000) {
+        setError('size');
+        setDecoding(false);
         return;
       }
-      baseline.current = data.model;
-      setModel(data.model);
-      setBudget(Math.min(40, data.model.curves.length));
-      setExcluded([]);
-      setSelected(
-        data.model.curves.length
-          ? { id: data.model.curves[0].id, segment: 0 }
-          : null,
-      );
-      setBusy(false);
-      worker.terminate();
-    };
-    worker.onerror = () => {
-      if (!canceled) {
-        setError('构造计算中断，请重新载入照片。');
-        setBusy(false);
+      try {
+        const buffer = document.createElement('canvas');
+        buffer.width = image.naturalWidth;
+        buffer.height = image.naturalHeight;
+        const ctx = buffer.getContext('2d', { willReadFrequently: true });
+        if (!ctx) throw Error('canvas');
+        ctx.drawImage(image, 0, 0);
+        const data = ctx.getImageData(0, 0, buffer.width, buffer.height).data;
+        setOperation({
+          id,
+          type: 'create',
+          image: { data, width: buffer.width, height: buffer.height },
+        });
+        setDecoding(false);
+      } catch {
+        setError('canvas');
+        setDecoding(false);
       }
     };
-    img.onload = () => {
-      if (canceled) return;
-      if (img.naturalWidth * img.naturalHeight > 50000000) {
-        setError('请使用小于 5000 万像素的照片。');
-        setBusy(false);
-        return;
-      }
-      const c = document.createElement('canvas');
-      c.width = c.height = 160;
-      const ctx = c.getContext('2d', { willReadFrequently: true });
-      if (!ctx) {
-        setError('浏览器无法打开画布。');
-        setBusy(false);
-        return;
-      }
-      ctx.fillStyle = 'white';
-      ctx.fillRect(0, 0, 160, 160);
-      const scale = 160 / Math.max(img.naturalWidth, img.naturalHeight),
-        w = img.naturalWidth * scale,
-        h = img.naturalHeight * scale;
-      ctx.drawImage(img, (160 - w) / 2, (160 - h) / 2, w, h);
-      original.current = c;
-      const pixels = ctx.getImageData(0, 0, 160, 160).data;
-      worker.postMessage({ type: 'construct', pixels }, [pixels.buffer]);
-    };
-    img.onerror = () => {
-      if (!canceled) {
-        setError('无法读取照片，请换成 JPG、PNG 或 WebP。');
-        setBusy(false);
+    image.onerror = () => {
+      if (sequence.current === id) {
+        setError('image');
+        setDecoding(false);
       }
     };
-    img.src = source;
-    return () => {
-      canceled = true;
-      worker.terminate();
-    };
-  }, [source, revision]);
+    image.src = url;
+  }, []);
+
   useEffect(() => {
-    if (!model) return;
+    // Restore the browser-only language preference after hydration.
+    try {
+      const saved = localStorage.getItem('sfumato-language');
+      // oxlint-disable-next-line react/react-compiler
+      if (saved === 'en' || saved === 'zh-CN') setLanguage(saved);
+    } catch {
+      /* Storage is optional. */
+    }
+    loadSource(sample, 'NASA · Eileen Collins');
+    const lifecycle = sequence,
+      currentUrl = objectUrl;
+    return () => {
+      lifecycle.current++;
+      if (currentUrl.current) URL.revokeObjectURL(currentUrl.current);
+    };
+  }, [loadSource]);
+  useEffect(() => {
+    document.documentElement.lang = language;
+    document.title =
+      language === 'zh-CN'
+        ? 'Sfumato · 多少数学，能描绘你？'
+        : 'Sfumato · How much math describes you?';
+    try {
+      localStorage.setItem('sfumato-language', language);
+    } catch {
+      /* Storage is optional. */
+    }
+  }, [language]);
+  useEffect(() => {
+    if (!operation) return;
+    let worker: Worker | undefined;
     let canceled = false;
-    const worker = new Worker(`${base}/construct.worker.mjs`, {
-      type: 'module',
-    });
-    // Solver results follow editable constraints, not the source photograph.
-    // oxlint-disable-next-line react/react-compiler
-    setSolving(true);
-    setError('');
-    worker.onmessage = ({ data }) => {
-      if (canceled) return;
-      setSolving(false);
-      if (data.type === 'error') {
-        setError(data.message);
-        return;
-      }
-      lastPixels.current = data.pixels;
-      setStats(data.stats);
-      worker.terminate();
-    };
-    worker.onerror = () => {
-      if (!canceled) {
-        setSolving(false);
-        setError('明暗求解中断，请点击恢复构造重试。');
-      }
-    };
+    // Create the worker after the debounce, so dragging does not spawn idle workers.
     const timer = setTimeout(
-      () =>
-        worker.postMessage({
-          type: 'render',
-          model,
-          settings: { budget, excluded },
-        }),
-      65,
+      () => {
+        try {
+          worker = new Worker(`${base}/portrait.worker.mjs`, {
+            type: 'module',
+          });
+          worker.onmessage = ({ data }) => {
+            if (canceled || data.id !== sequence.current) return;
+            if (data.type === 'error') {
+              setError('worker');
+              setOperation(null);
+              worker?.terminate();
+              return;
+            }
+            const next = data.result as Portrait;
+            setResult(next);
+            setOperation(null);
+            if (operation.type === 'create') {
+              const initial = {
+                recipe: next.recipe,
+                limit: next.recipe.construction.curves.length,
+                excluded: [],
+              };
+              baseline.current = structuredClone(initial);
+              editRef.current = initial;
+              setEdit(initial);
+              setSelected(
+                next.math.example
+                  ? {
+                      id: next.math.example.curveId,
+                      segment: next.math.example.segment,
+                    }
+                  : null,
+              );
+            }
+            setSelected((previous) =>
+              next.recipe.construction.curves.some(
+                (c) => c.id === previous?.id && c.segments[previous.segment],
+              )
+                ? previous
+                : next.math.example
+                  ? {
+                      id: next.math.example.curveId,
+                      segment: next.math.example.segment,
+                    }
+                  : null,
+            );
+            worker?.terminate();
+          };
+          worker.onerror = () => {
+            if (!canceled && operation.id === sequence.current) {
+              setError('worker');
+              setOperation(null);
+            }
+            worker?.terminate();
+          };
+          worker.postMessage(
+            operation,
+            operation.type === 'create' ? [operation.image.data.buffer] : [],
+          );
+        } catch {
+          if (!canceled) {
+            setError('worker');
+            setOperation(null);
+          }
+        }
+      },
+      operation.type === 'create' ? 0 : 90,
     );
     return () => {
       canceled = true;
       clearTimeout(timer);
-      worker.terminate();
+      worker?.terminate();
     };
-  }, [model, budget, excluded]);
+  }, [operation]);
   useEffect(() => {
-    const c = canvas.current,
-      ctx = c?.getContext('2d');
-    if (!c || !ctx) return;
-    ctx.fillStyle = '#faf9f5';
-    ctx.fillRect(0, 0, c.width, c.height);
-    if (view === 'original' && original.current) {
-      ctx.drawImage(original.current, 0, 0, c.width, c.height);
-      return;
+    if (!result || !canvas.current) return;
+    const ctx = canvas.current.getContext('2d');
+    ctx?.putImageData(
+      new ImageData(new Uint8ClampedArray(result.image.data), 160, 160),
+      0,
+      0,
+    );
+  }, [result, view]);
+
+  const remember = () => {
+    if (editRef.current) {
+      history.current.push(structuredClone(editRef.current));
+      if (history.current.length > 25) history.current.shift();
+      setUndoCount(history.current.length);
     }
-    if (!lastPixels.current) return;
-    const buffer = document.createElement('canvas');
-    buffer.width = buffer.height = 160;
-    buffer
-      .getContext('2d')
-      ?.putImageData(
-        new ImageData(new Uint8ClampedArray(lastPixels.current), 160, 160),
-        0,
-        0,
-      );
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(buffer, 0, 0, c.width, c.height);
-  }, [stats, view]);
-  useEffect(
-    () => () => {
-      if (objectUrl.current) URL.revokeObjectURL(objectUrl.current);
-    },
-    [],
-  );
-  useEffect(() => {
-    if (!message) return;
-    const t = setTimeout(() => setMessage(''), 4000);
-    return () => clearTimeout(t);
-  }, [message]);
-  const active =
-      model?.curves.slice(0, budget).filter((c) => !excluded.includes(c.id)) ??
-      [],
-    curve = active.find((c) => c.id === selected?.id),
-    segment = curve?.segments[selected?.segment ?? 0],
-    coeff = segment ? polynomial(segment.controls) : null;
+  };
+  const apply = (next: Edit, record = true) => {
+    if (record) remember();
+    editRef.current = next;
+    setEdit(next);
+    setError('');
+    setOperation({
+      id: ++sequence.current,
+      type: 'redraw',
+      recipe: effective(next),
+    });
+  };
+  const move = (handle: number, x: number, y: number, record = true) => {
+    const current = editRef.current;
+    if (!current || !selected || !Number.isFinite(x) || !Number.isFinite(y))
+      return;
+    const construction = moveControlPoint(
+      current.recipe.construction,
+      selected.id,
+      selected.segment,
+      handle,
+      x,
+      y,
+    );
+    apply({ ...current, recipe: { ...current.recipe, construction } }, record);
+  };
   const upload = (file?: File) => {
     if (!file) return;
+    if (file.size > 20 * 1024 * 1024) {
+      setError('size');
+      return;
+    }
     if (
-      !['image/jpeg', 'image/png', 'image/webp', 'image/avif'].includes(
-        file.type,
-      ) ||
-      file.size > 20 * 1024 * 1024
+      !/^image\/(jpeg|png|webp|avif)$/.test(file.type) &&
+      !(file.type === '' && /\.(jpe?g|png|webp|avif)$/i.test(file.name))
     ) {
-      setError('请选择小于 20 MB 的 JPG、PNG、WebP 或 AVIF。');
+      setError('image');
       return;
     }
     if (objectUrl.current) URL.revokeObjectURL(objectUrl.current);
     objectUrl.current = URL.createObjectURL(file);
-    setName(file.name);
-    setView('construction');
-    setSource(objectUrl.current);
+    loadSource(objectUrl.current, file.name);
   };
   const importRecipe = async (file?: File) => {
     if (!file) return;
-    try {
-      if (file.size > 4 * 1024 * 1024) throw Error('配方超过 4 MB。');
-      const m = validateConstruction(JSON.parse(await file.text())) as Model;
-      setSource(null);
-      original.current = null;
-      baseline.current = structuredClone(m);
-      setModel(m);
-      setBudget(m.curves.length);
-      setExcluded([]);
-      setSelected(m.curves.length ? { id: m.curves[0].id, segment: 0 } : null);
-      setName('从数学配方重建');
-      setView('construction');
-      setBusy(false);
-      setMessage('已读取配方，无需原照片。');
-    } catch (e) {
-      setError(e instanceof Error ? e.message : '无法读取这份配方。');
-    }
-  };
-  const movePoint = (
-    id: number,
-    index: number,
-    handle: number,
-    x: number,
-    y: number,
-  ) => {
-    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
-    setModel((m) => (m ? moveControlPoint(m, id, index, handle, x, y) : m));
-  };
-  const reset = () => {
-    if (!baseline.current) {
-      setRevision((n) => n + 1);
+    if (file.size > 4 * 1024 * 1024) {
+      setError('recipe');
       return;
     }
-    setModel(structuredClone(baseline.current));
-    setExcluded([]);
+    const id = ++sequence.current;
+    setOperation(null);
+    setDecoding(true);
     setError('');
-    setMessage('已恢复最初的曲线和明暗约束。');
-  };
-  const exportModel = () => {
-    if (!model) return;
-    const kept = { ...model, curves: active };
-    save(
-      new Blob([JSON.stringify(kept, null, 2)], { type: 'application/json' }),
-      'sfumato-construction.json',
-    );
-    setMessage('构造已保存。可以重新导入，不需要照片。');
-  };
-  const exportImage = () => {
-    if (!lastPixels.current) return;
-    const c = document.createElement('canvas'),
-      small = document.createElement('canvas');
-    small.width = small.height = 160;
-    small
-      .getContext('2d')
-      ?.putImageData(
-        new ImageData(new Uint8ClampedArray(lastPixels.current), 160, 160),
-        0,
-        0,
+    try {
+      const input = JSON.parse(await file.text());
+      if (id !== sequence.current) return;
+      const recipe = (
+        input?.version === 'sfumato-recipe-1'
+          ? input
+          : {
+              version: 'sfumato-recipe-1',
+              construction: validateConstruction(input),
+              render: { iterations: 500, tolerance: 1e-5 },
+              language,
+            }
+      ) as Recipe;
+      describeMath(recipe); // Validate before replacing the current working construction.
+      const initial = {
+        recipe,
+        limit: recipe.construction.curves.length,
+        excluded: [],
+      };
+      baseline.current = structuredClone(initial);
+      editRef.current = initial;
+      setEdit(initial);
+      history.current = [];
+      setUndoCount(0);
+      setSource(null);
+      setName(file.name);
+      setResult(null);
+      setSelected(
+        recipe.construction.curves.length
+          ? { id: recipe.construction.curves[0].id, segment: 0 }
+          : null,
       );
-    c.width = c.height = 2000;
-    const ctx = c.getContext('2d');
-    if (!ctx) return;
-    ctx.fillStyle = '#faf9f5';
-    ctx.fillRect(0, 0, 2000, 2000);
-    ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(small, 160, 160, 1680, 1680);
-    c.toBlob((b) => b && save(b, 'sfumato-mathematical-portrait.png'));
+      if (view === 'original') setView('curves');
+      setOperation({ type: 'redraw', id, recipe });
+    } catch {
+      if (id === sequence.current) setError('recipe');
+    } finally {
+      if (id === sequence.current) setDecoding(false);
+    }
   };
-  const svgExport = () => {
-    const curves = active
-      .map((c) =>
-        c.segments.map((s) => `<path d="${path(s.controls)}"/>`).join(''),
-      )
-      .join('');
-    save(
-      new Blob(
-        [
-          `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-10 -10 180 180"><title>Sfumato — image boundary construction</title><rect x="-10" y="-10" width="180" height="180" fill="#faf9f5"/><g fill="none" stroke="#344c31" stroke-width=".35">${curves}</g></svg>`,
-        ],
-        { type: 'image/svg+xml' },
-      ),
-      'sfumato-curves.svg',
-    );
+  const exportCard = async (format: 'svg' | 'png') => {
+    if (!ready || !displayRecipe) return;
+    const svg = toMathCard(displayRecipe);
+    if (format === 'svg') {
+      save(
+        new Blob([svg], { type: 'image/svg+xml' }),
+        'sfumato-math-portrait.svg',
+      );
+      return;
+    }
+    setExporting(true);
+    const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
+    try {
+      const img = new window.Image();
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = reject;
+        img.src = url;
+      });
+      const buffer = document.createElement('canvas');
+      buffer.width = 1120;
+      buffer.height = 688;
+      const ctx = buffer.getContext('2d');
+      if (!ctx) throw Error('canvas');
+      ctx.drawImage(img, 0, 0);
+      const blob = await new Promise<Blob | null>((resolve) =>
+        buffer.toBlob(resolve),
+      );
+      if (!blob) throw Error('export');
+      save(blob, 'sfumato-math-portrait.png');
+    } catch {
+      setError('export');
+    } finally {
+      URL.revokeObjectURL(url);
+      setExporting(false);
+    }
   };
   const toolState = useRef({
     ready: false,
     curves: [] as { id: number; segments: number }[],
-    selected: null as { id: number; segment: number } | null,
+    selected: null as Selection,
   });
   useLayoutEffect(() => {
     toolState.current = {
-      ready: !!model && !busy && !solving,
+      ready,
       curves: active.map((c) => ({ id: c.id, segments: c.segments.length })),
       selected,
     };
@@ -376,502 +461,676 @@ export default function Construction() {
     () =>
       registerConstructionTools(
         () => structuredClone(toolState.current),
-        (id, segment) =>
-          flushSync(() => {
-            setSelected({ id, segment });
-            setView('construction');
-          }),
+        (id, index) => {
+          setSelected({ id, segment: index });
+          setView('curves');
+          setEditing(true);
+        },
       ),
     [],
   );
+
   return (
-    <main className="construction-app" lang="zh-CN">
+    <main className="construction-app" lang={language}>
       <header className="construction-header">
         <a href={base || '/'} className="wordmark">
           sfumato<span>.</span>
         </a>
-        <div>
-          <a href={base || '/'}>回到显影游戏</a>
-          <a href={`${base}/strokes/`}>
-            <ArrowLeft size={14} />
-            笔触实验
-          </a>
+        <div className="header-actions">
+          <span className="local-badge">
+            {t('本地计算 · 无图像 AI', 'Local computation · no image AI')}
+          </span>
+          <fieldset className="language-switch" aria-label="Language / 语言">
+            <button
+              aria-pressed={language === 'zh-CN'}
+              onClick={() => setLanguage('zh-CN')}
+            >
+              中文
+            </button>
+            <button
+              aria-pressed={language === 'en'}
+              onClick={() => setLanguage('en')}
+            >
+              EN
+            </button>
+          </fieldset>
         </div>
       </header>
       <div className="construction-intro">
-        <div>
-          <span className="eyebrow">一幅可以拆开的数学肖像</span>
-          <h1>照片退场，曲线留下。</h1>
-        </div>
+        <h1>{t('多少数学，能描绘你？', 'How much math describes you?')}</h1>
         <p>
-          选择一条线，看看它的方程。
-          <br />
-          移动一个控制点，让明暗重新生长。
+          {t(
+            '一张照片，一份可以拆开、修改、重画的数学自画像。',
+            'A photograph becomes a mathematical self-portrait you can inspect, edit and redraw.',
+          )}
         </p>
       </div>
       <div className="construction-workspace">
         <aside className="construction-controls">
-          <section>
-            <h2>从一张照片开始</h2>
-            <p className="input-name">{name}</p>
+          <section className="source-controls">
+            <h2>{t('从一张照片开始', 'Start with a photograph')}</h2>
+            <p className="input-name" title={name}>
+              {name}
+            </p>
             <Button
-              variant="outline"
+              className="primary-action"
               onClick={() => imageInput.current?.click()}
             >
-              <Upload size={15} />
-              换一张照片
+              <Upload size={16} />
+              {t('选择照片', 'Choose photograph')}
             </Button>
             <input
-              className="sr-only"
+              hidden
               ref={imageInput}
-              aria-label="选择照片"
               type="file"
+              aria-label={t('选择照片', 'Choose photograph')}
               accept="image/jpeg,image/png,image/webp,image/avif"
               onChange={(e) => {
                 upload(e.target.files?.[0]);
                 e.target.value = '';
               }}
             />
+            <p className="control-note">
+              JPG / PNG / WebP / AVIF · {t('最大 20 MB', 'up to 20 MB')}
+            </p>
             <div className="secondary-actions">
               <button onClick={() => recipeInput.current?.click()}>
-                导入数学配方
+                {t('导入配方', 'Import recipe')}
               </button>
-              {source !== sample && (
-                <button
-                  onClick={() => {
-                    setSource(sample);
-                    setName('NASA · Eileen Collins');
-                    setView('construction');
-                  }}
-                >
-                  恢复示例
-                </button>
-              )}
+              <button
+                onClick={() => loadSource(sample, 'NASA · Eileen Collins')}
+              >
+                {t('使用示例', 'Use example')}
+              </button>
             </div>
             <input
-              className="sr-only"
+              hidden
               ref={recipeInput}
               type="file"
+              aria-label={t('导入数学配方', 'Import mathematical recipe')}
               accept=".json,application/json"
-              aria-label="导入数学构造配方"
               onChange={(e) => {
                 void importRecipe(e.target.files?.[0]);
                 e.target.value = '';
               }}
             />
           </section>
-          <section>
-            <div className="control-title">
-              <h2>保留多少条边界？</h2>
-              <strong>
-                {active.length}
-                <small> / {model?.curves.length ?? '—'}</small>
-              </strong>
-            </div>
-            <Slider
-              aria-label="保留的边界数量"
-              value={[budget]}
-              min={0}
-              max={Math.max(1, model?.curves.length ?? 80)}
-              step={1}
-              disabled={!model || busy}
-              onValueChange={(v) => setBudget(Array.isArray(v) ? v[0] : v)}
-            />
-            <div className="budget-presets">
-              {[0, 10, 30].map((n) => (
-                <button
-                  disabled={!model || busy}
-                  key={n}
-                  onClick={() =>
-                    setBudget(Math.min(n, model?.curves.length ?? 0))
-                  }
-                >
-                  {n === 0 ? '只剩明暗锚点' : `${n} 条线`}
-                </button>
-              ))}
-              <button
-                disabled={!model || busy}
-                onClick={() => setBudget(model?.curves.length ?? 0)}
+          <details
+            className="edit-details"
+            open={editing}
+            onToggle={(e) => setEditing(e.currentTarget.open)}
+          >
+            <summary>{t('编辑数学构造', 'Edit the construction')}</summary>
+            <div className="editor-content">
+              <label className="field-label">
+                {t('保留的边界', 'Boundary budget')}{' '}
+                <b>
+                  {active.length} /{' '}
+                  {edit?.recipe.construction.curves.length ?? 0}
+                </b>
+              </label>
+              <Slider
+                min={0}
+                max={Math.max(1, edit?.recipe.construction.curves.length ?? 1)}
+                step={1}
+                value={[edit?.limit ?? 0]}
+                disabled={!edit || decoding}
+                aria-label={t('保留的边界数量', 'Boundary budget')}
+                onValueChange={(value) => {
+                  if (editRef.current)
+                    apply({
+                      ...editRef.current,
+                      limit: Array.isArray(value) ? value[0] : value,
+                    });
+                }}
+              />
+              <p className="control-note">
+                {t(
+                  '一条边界可包含多段三次曲线。',
+                  'One boundary can contain multiple cubic segments.',
+                )}
+              </p>
+              <label className="field-label" htmlFor="curve-select">
+                {t('选择边界', 'Select boundary')}
+              </label>
+              <select
+                id="curve-select"
+                value={curve?.id ?? ''}
+                disabled={!active.length}
+                onChange={(e) => {
+                  setSelected({ id: Number(e.target.value), segment: 0 });
+                  setView('curves');
+                }}
               >
-                全部
-              </button>
-            </div>
-            <p className="explain-small">
-              一条边界可由多段三次曲线组成。减少边界，看哪些特征最先消失。
-            </p>
-          </section>
-          <section className="curve-editor">
-            <div className="control-title">
-              <h2>拆开一条曲线</h2>
-              <Move size={16} />
-            </div>
-            <label className="field-label" htmlFor="curve-select">
-              选择边界
-            </label>
-            <select
-              id="curve-select"
-              value={curve?.id ?? ''}
-              disabled={!active.length || busy}
-              onChange={(e) =>
-                setSelected({ id: Number(e.target.value), segment: 0 })
-              }
-            >
-              <option value="" disabled>
-                在画面中点选，或从这里选择
-              </option>
-              {active.map((c) => (
-                <option key={c.id} value={c.id}>
-                  边界 {c.id + 1} · {c.segments.length} 段
+                <option value="" disabled>
+                  {t('选择一条曲线', 'Choose a curve')}
                 </option>
-              ))}
-            </select>
-            {segment && curve && (
-              <>
-                <label className="field-label" htmlFor="segment-select">
-                  三次曲线段
-                </label>
-                <select
-                  id="segment-select"
-                  value={selected?.segment ?? 0}
-                  onChange={(e) =>
-                    setSelected({
-                      id: curve.id,
-                      segment: Number(e.target.value),
-                    })
-                  }
-                >
-                  {curve.segments.map((_, i) => (
-                    <option key={i} value={i}>
-                      第 {i + 1} 段 / 共 {curve.segments.length} 段
-                    </option>
-                  ))}
-                </select>
-                <p className="explain-small">
-                  拖动图上的四个点，或修改下面的坐标。坐标范围为 0–159。
-                </p>
-                <div className="point-inputs">
-                  {segment.controls.map((p, i) => (
-                    <div key={i}>
-                      <span>P{i}</span>
-                      {p.map((v, k) => (
-                        <label key={k}>
-                          <span className="sr-only">
-                            控制点 {i} 的 {k ? 'y' : 'x'} 坐标
-                          </span>
+                {active.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {t('边界', 'Boundary')} {c.id + 1} · {c.segments.length}{' '}
+                    {t('段', 'segments')}
+                  </option>
+                ))}
+              </select>
+              {curve && segment && (
+                <>
+                  <label className="field-label" htmlFor="segment-select">
+                    {t('选择曲线段', 'Select segment')}
+                  </label>
+                  <select
+                    id="segment-select"
+                    value={selected?.segment ?? 0}
+                    onChange={(e) =>
+                      setSelected({
+                        id: curve.id,
+                        segment: Number(e.target.value),
+                      })
+                    }
+                  >
+                    {curve.segments.map((_, i) => (
+                      <option value={i} key={i}>
+                        {i + 1} / {curve.segments.length}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="point-inputs">
+                    {segment.controls.map((point, handle) => (
+                      <div key={handle}>
+                        <span>P{handle}</span>
+                        {point.map((n, axis) => (
                           <input
+                            key={axis}
                             type="number"
                             min={0}
                             max={159}
-                            step={0.5}
-                            value={Number(v.toFixed(2))}
+                            step={0.1}
+                            value={Number(n.toFixed(2))}
+                            aria-label={`P${handle} ${axis === 0 ? 'x' : 'y'}`}
                             onChange={(e) => {
-                              const next = Number(e.target.value);
-                              movePoint(
-                                curve.id,
-                                selected?.segment ?? 0,
-                                i,
-                                k ? p[0] : next,
-                                k ? next : p[1],
+                              if (e.target.value === '') return;
+                              const v = e.target.valueAsNumber;
+                              move(
+                                handle,
+                                axis === 0 ? v : point[0],
+                                axis === 1 ? v : point[1],
                               );
                             }}
                           />
-                        </label>
-                      ))}
-                    </div>
-                  ))}
-                </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                  <p className="control-note">
+                    {t(
+                      '拖动控制点，或用数值输入调整。',
+                      'Drag a control point or edit its coordinates.',
+                    )}
+                  </p>
+                  <Button
+                    variant="ghost"
+                    className="remove-curve"
+                    onClick={() => {
+                      if (editRef.current)
+                        apply({
+                          ...editRef.current,
+                          excluded: [...editRef.current.excluded, curve.id],
+                        });
+                      setSelected(null);
+                    }}
+                  >
+                    <Trash2 size={15} />
+                    {t('移除这条边界', 'Remove boundary')}
+                  </Button>
+                </>
+              )}
+              <div className="restore-controls">
                 <Button
-                  variant="outline"
-                  className="remove-curve"
+                  variant="ghost"
+                  disabled={!undoCount}
                   onClick={() => {
-                    setExcluded((a) => [...a, curve.id]);
-                    setSelected(null);
-                    setMessage(
-                      `已移除边界 ${curve.id + 1}；其余约束重新决定明暗。`,
-                    );
+                    const previous = history.current.pop();
+                    if (previous) apply(previous, false);
+                    setUndoCount(history.current.length);
                   }}
                 >
-                  <Trash2 size={14} />
-                  移除整条边界
+                  <Undo2 size={15} />
+                  {t('撤销', 'Undo')}
                 </Button>
-              </>
-            )}
-            {!segment && (
-              <p className="explain-small">
-                选择一条边界，查看它的控制点与方程。
-              </p>
-            )}
-          </section>
-          <div className="restore-controls">
-            <Button
-              variant="ghost"
-              disabled={!excluded.length || busy}
-              onClick={() => setExcluded([])}
-            >
-              <Undo2 size={14} />
-              恢复删线
-            </Button>
-            <Button variant="ghost" onClick={reset} disabled={busy}>
-              <RotateCcw size={14} />
-              恢复构造
-            </Button>
-          </div>
+                <Button
+                  variant="ghost"
+                  disabled={!edit}
+                  onClick={() => {
+                    if (baseline.current)
+                      apply(structuredClone(baseline.current));
+                  }}
+                >
+                  <RotateCcw size={15} />
+                  {t('恢复构造', 'Reset')}
+                </Button>
+              </div>
+            </div>
+          </details>
           <p className="local-note">
-            照片留在本机。
-            <br />
-            没有图像生成模型，也没有发布。
+            {t(
+              '照片只在当前设备处理。配方不保存原照片，但包含描绘它的曲线与明暗信息。',
+              'Photos are processed on this device. Recipes omit the source photo, but contain the curves and tones that depict it.',
+            )}
           </p>
+          <a className="legacy-link" href={`${base}/strokes/`}>
+            {t('笔触实验 ↗', 'Stroke study ↗')}
+          </a>
         </aside>
         <section
           className="construction-result"
-          aria-label="数学肖像与曲线构造"
+          aria-label={t('数学自画像', 'Mathematical self-portrait')}
+          aria-busy={busy}
         >
           <div className="construction-toolbar">
-            <span>
-              {busy
-                ? '提取边界与拟合曲线…'
-                : solving
-                  ? '重新求解明暗…'
-                  : '由曲线与明暗约束重建'}
-            </span>
             <Tabs value={view} onValueChange={(v) => setView(String(v))}>
               <TabsList>
-                <TabsTrigger value="construction">构造</TabsTrigger>
-                <TabsTrigger value="portrait">肖像</TabsTrigger>
-                <TabsTrigger value="curves">曲线</TabsTrigger>
+                <TabsTrigger value="curves">
+                  {t('数学自画像', 'Math portrait')}
+                </TabsTrigger>
+                <TabsTrigger value="tone">
+                  {t('明暗重建', 'Tonal portrait')}
+                </TabsTrigger>
                 <TabsTrigger value="original" disabled={!source}>
-                  原图
+                  {t('原图', 'Original')}
                 </TabsTrigger>
               </TabsList>
             </Tabs>
-          </div>
-          <div className={`construction-paper view-${view}`}>
-            <canvas
-              ref={canvas}
-              width={800}
-              height={800}
-              aria-label="由数学构造重建的肖像"
-            />
-            {view !== 'original' && view !== 'portrait' && (
-              <svg
-                viewBox="0 0 160 160"
-                className="construction-overlay"
-                aria-label="可编辑的三次曲线"
-                onPointerMove={(e) => {
-                  if (!drag.current) return;
-                  const r = e.currentTarget.getBoundingClientRect(),
-                    d = drag.current;
-                  movePoint(
-                    d.id,
-                    d.segment,
-                    d.handle,
-                    ((e.clientX - r.left) / r.width) * 160,
-                    ((e.clientY - r.top) / r.height) * 160,
-                  );
-                }}
-                onPointerUp={() => {
-                  drag.current = null;
-                }}
-                onPointerCancel={() => {
-                  drag.current = null;
-                }}
-              >
-                {active.map((c) =>
-                  c.segments.map((s, i) => (
-                    <path
-                      key={`${c.id}-${i}`}
-                      d={path(s.controls)}
-                      className={
-                        selected?.id === c.id && selected.segment === i
-                          ? 'selected-curve'
-                          : 'boundary-curve'
-                      }
-                      // SVG paths cannot be replaced by HTML buttons.
-                      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
-                      role="button"
-                      tabIndex={
-                        selected?.id === c.id && selected.segment === i ? 0 : -1
-                      }
-                      aria-label={`边界 ${c.id + 1} 第 ${i + 1} 段`}
-                      onClick={() => setSelected({ id: c.id, segment: i })}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          setSelected({ id: c.id, segment: i });
-                        }
-                      }}
-                    />
-                  )),
-                )}
-                {segment && curve && (
-                  <g className="curve-handles">
-                    <path
-                      d={`M${segment.controls.map((p) => p.join(' ')).join(' L')}`}
-                    />
-                    {segment.controls.map((p, i) => (
-                      <g key={i}>
-                        <circle
-                          cx={p[0]}
-                          cy={p[1]}
-                          r={1.35}
-                          // SVG handles share their actions with the numeric inputs.
-                          // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
-                          role="button"
-                          tabIndex={0}
-                          aria-label={`控制点 ${i}，用方向键移动`}
-                          onPointerDown={(e) => {
-                            e.preventDefault();
-                            e.currentTarget.setPointerCapture(e.pointerId);
-                            drag.current = {
-                              id: curve.id,
-                              segment: selected?.segment ?? 0,
-                              handle: i,
-                            };
-                          }}
-                          onKeyDown={(e) => {
-                            const delta: Record<string, number[]> = {
-                              ArrowLeft: [-1, 0],
-                              ArrowRight: [1, 0],
-                              ArrowUp: [0, -1],
-                              ArrowDown: [0, 1],
-                            };
-                            if (delta[e.key]) {
-                              e.preventDefault();
-                              const [dx, dy] = delta[e.key];
-                              movePoint(
-                                curve.id,
-                                selected?.segment ?? 0,
-                                i,
-                                p[0] + dx,
-                                p[1] + dy,
-                              );
-                            }
-                          }}
-                        />
-                        <text x={p[0] + 2} y={p[1] - 2}>
-                          P{i}
-                        </text>
-                      </g>
-                    ))}
-                  </g>
-                )}
-              </svg>
-            )}
-            {busy && (
-              <div className="construct-loading">
-                <span className="loading-dot" />
-                <strong>寻找可以留下的边界</strong>
-                <span>测量明暗 · 拟合曲线 · 求解构造</span>
-              </div>
-            )}
+            <output>
+              {busy ? (
+                <>
+                  <LoaderCircle size={14} className="spin" />
+                  {t('正在构造…', 'Constructing…')}
+                </>
+              ) : result ? (
+                t('构造完成', 'Ready')
+              ) : (
+                ''
+              )}
+            </output>
           </div>
           {error && (
             <div className="construction-error" role="alert">
-              {error}
+              {errors[error]?.[language === 'zh-CN' ? 0 : 1] ?? error}
               <button
                 onClick={() => {
-                  setError('');
-                  if (!model) setRevision((n) => n + 1);
+                  if (editRef.current) apply(editRef.current, false);
+                  else loadSource(source || sample, name);
                 }}
               >
-                关闭 / 重试
+                {t('重试', 'Retry')}
               </button>
             </div>
           )}
-          <div className="construction-measures">
-            <div>
-              <strong>{stats?.curves ?? '—'}</strong>
-              <span>边界</span>
+          <div className="portrait-layout">
+            <div className={`construction-paper view-${view}`}>
+              {/* Local photo URLs are decoded directly without a remote optimizer. */}
+              {view === 'original' && source ? (
+                // oxlint-disable-next-line next/no-img-element
+                <img
+                  src={source}
+                  alt={t('原始照片', 'Original photograph')}
+                  className="original-photo"
+                />
+              ) : (
+                <>
+                  <canvas
+                    ref={canvas}
+                    width={160}
+                    height={160}
+                    aria-label={t('明暗重建图', 'Reconstructed tonal portrait')}
+                  />
+                  {view === 'curves' && (
+                    <svg
+                      className="construction-overlay"
+                      viewBox="0 0 160 160"
+                      aria-label={t(
+                        '曲线构造，可在编辑区选择曲线',
+                        'Curve construction; select a curve in the editor',
+                      )}
+                      onPointerMove={(e) => {
+                        if (dragging.current === null) return;
+                        const bounds = e.currentTarget.getBoundingClientRect();
+                        move(
+                          dragging.current,
+                          ((e.clientX - bounds.left) / bounds.width) * 160,
+                          ((e.clientY - bounds.top) / bounds.height) * 160,
+                          false,
+                        );
+                      }}
+                      onPointerUp={(e) => {
+                        dragging.current = null;
+                        if (e.currentTarget.hasPointerCapture(e.pointerId))
+                          e.currentTarget.releasePointerCapture(e.pointerId);
+                      }}
+                      onPointerCancel={() => {
+                        dragging.current = null;
+                      }}
+                    >
+                      {active.map((c) =>
+                        c.segments.map((s, index) => (
+                          <path
+                            key={`${c.id}-${index}`}
+                            d={path(s.controls)}
+                            className={
+                              selected?.id === c.id &&
+                              selected.segment === index
+                                ? 'selected-curve'
+                                : 'boundary-curve'
+                            }
+                            onClick={() => {
+                              setSelected({ id: c.id, segment: index });
+                              setEditing(true);
+                            }}
+                          />
+                        )),
+                      )}
+                      {editing && segment && (
+                        <g className="curve-handles">
+                          <path
+                            d={`M${segment.controls.map((p) => p.join(' ')).join(' L')}`}
+                          />
+                          {segment.controls.map((point, handle) => (
+                            <circle
+                              key={handle}
+                              cx={point[0]}
+                              cy={point[1]}
+                              r="1.45"
+                              onPointerDown={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                remember();
+                                dragging.current = handle;
+                                e.currentTarget.ownerSVGElement?.setPointerCapture(
+                                  e.pointerId,
+                                );
+                              }}
+                            />
+                          ))}
+                        </g>
+                      )}
+                    </svg>
+                  )}
+                </>
+              )}
+              {!result && (
+                <div className="paper-placeholder">
+                  {busy ? (
+                    <LoaderCircle className="spin" size={26} />
+                  ) : (
+                    t('选择图片，开始构造', 'Choose an image to begin')
+                  )}
+                </div>
+              )}
             </div>
-            <div>
-              <strong>{stats?.segments ?? '—'}</strong>
-              <span>三次曲线段</span>
-            </div>
-            <div>
-              <strong>{stats?.scalarParameters.toLocaleString() ?? '—'}</strong>
-              <span>几何与明暗数值</span>
-            </div>
-            <p>
-              每次重画只读取这些参数，
-              <br />
-              不再读取原照片。
-            </p>
+            <aside className="math-facts">
+              <span className="eyebrow">
+                {t('数学画像评分 · 0–100', 'MATHEMATICAL PROFILE · 0–100')}
+              </span>
+              <div className="profile-scores">
+                {[
+                  {
+                    label: t('数学复杂度', 'Mathematical complexity'),
+                    value: math?.scores.complexity.value,
+                    note: t(
+                      '当前曲线段数的对数指数',
+                      'Logarithmic index of cubic segment count',
+                    ),
+                  },
+                  {
+                    label: t('构图对称度', 'Composition symmetry'),
+                    value: math?.scores.symmetry.value,
+                    note: t(
+                      '边界与其左右镜像的重合程度',
+                      'Overlap of the boundaries with their horizontal reflection',
+                    ),
+                  },
+                  {
+                    label: t('明暗丰富度', 'Tonal richness'),
+                    value: math?.scores.tone.value,
+                    note: t(
+                      '64 个明暗锚点的灰度分布熵',
+                      'Grayscale distribution entropy of the 64 tone anchors',
+                    ),
+                  },
+                ].map(({ label, value, note }) => (
+                  <div className="profile-score" key={label} title={note}>
+                    <span>{label}</span>
+                    <div className="score-value">
+                      <strong>{value == null ? '—' : value.toFixed(1)}</strong>
+                      <small>/ 100</small>
+                    </div>
+                    {value == null ? (
+                      <span className="score-unavailable">
+                        {t('暂无数据', 'Unavailable')}
+                      </span>
+                    ) : (
+                      <meter
+                        min={0}
+                        max={100}
+                        value={value}
+                        aria-label={label}
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+              <div className="math-numbers">
+                <div>
+                  <strong>{math?.cubicSegments.toLocaleString() ?? '—'}</strong>
+                  <span>{t('段三次曲线', 'cubic curve segments')}</span>
+                </div>
+                <div>
+                  <strong>{math?.toneAnchors ?? '—'}</strong>
+                  <span>{t('个明暗锚点', 'tone anchors')}</span>
+                </div>
+                <div>
+                  <strong>{math?.storedScalars.toLocaleString() ?? '—'}</strong>
+                  <span>
+                    {t('个几何与明暗数值', 'geometry and tone values')}
+                  </span>
+                </div>
+              </div>
+              <p className="control-note">
+                {t(
+                  '评分针对这张图。姿态、背景和裁剪会改变结果。',
+                  'Scores describe this image. Pose, background and cropping affect the result.',
+                )}
+              </p>
+            </aside>
           </div>
+          <details className="profile-method">
+            <summary>
+              {t('分数如何计算？', 'How are scores calculated?')}
+            </summary>
+            <p>
+              {t(
+                '数学复杂度：100 × ln(1 + 曲线段数) / ln(3001)。固定对数尺度，0 段为 0 分，3000 段为 100 分。',
+                'Complexity: 100 × ln(1 + segments) / ln(3001). A fixed logarithmic scale: 0 segments gives 0; 3,000 gives 100.',
+              )}
+            </p>
+            <p>
+              {t(
+                '构图对称度：将曲线放在 64×64 网格上并轻度平滑，比较它与围绕画面中轴的左右镜像；完全重合为 100 分。没有可见曲线时不评分。',
+                'Symmetry: place curves on a 64×64 grid, smooth slightly, and compare with their reflection around the image centre. Full overlap gives 100; no visible curves means no score.',
+              )}
+            </p>
+            <p>
+              {t(
+                '明暗丰富度：64 个明暗锚点分入 16 档灰度，计算 Shannon 熵 H，分数为 100 × H / 4。单一灰度为 0 分，各档均匀分布为 100 分。',
+                'Tonal richness: distribute the 64 anchors across 16 grayscale bins and compute Shannon entropy H. Score = 100 × H / 4. One tone gives 0; a uniform distribution across bins gives 100.',
+              )}
+            </p>
+            <p>
+              {t(
+                '这是一组图像构造指标，不是人群百分位或颜值结论；复杂度越高表示描述更繁复，并不表示更好看。',
+                'These are image-construction indices, not population percentiles or attractiveness judgments. Higher complexity means a more elaborate description.',
+              )}
+            </p>
+            <small>Sfumato profile v1</small>
+          </details>
           <div className="equation-panel">
             <div>
-              <span className="eyebrow">这段曲线的真实方程</span>
-              <span>0 ≤ t ≤ 1</span>
+              <span>
+                {t('蓝色曲线的真实方程', 'The equation of the blue curve')}
+              </span>
+              <small>0 ≤ t ≤ 1</small>
             </div>
-            {coeff ? (
+            {coefficients ? (
               <>
-                <code>x(t) = {equation(coeff[0])}</code>
-                <code>y(t) = {equation(coeff[1])}</code>
-                <p>系数显示至小数点后三位；数学配方保留完整数值精度。</p>
+                <code>x(t) = {equation(coefficients[0])}</code>
+                <code>y(t) = {equation(coefficients[1])}</code>
                 <p>
-                  {segment?.edited
-                    ? '这段曲线已被你修改，画面正由新的几何约束生成。'
-                    : source && Number.isFinite(segment?.maxError)
-                      ? `原始采样点的最大参数对应误差：${segment?.maxError?.toFixed(3)} 像素（在 160 × 160 分析网格上）。`
-                      : '选择来自配方的曲线；原图拟合误差未重新验证。'}
+                  {t(
+                    '显示系数保留三位小数，配方保存完整精度。',
+                    'Display coefficients are rounded; the recipe keeps full precision.',
+                  )}
                 </p>
               </>
             ) : (
-              <p>点选一段曲线，查看它的具体系数。</p>
+              <p>
+                {t(
+                  '没有选中的曲线；可在编辑区选择，或使用另一张照片。',
+                  'No selected curve. Choose one in the editor, or use another photograph.',
+                )}
+              </p>
             )}
           </div>
           <div className="construction-export">
             <Button
-              variant="outline"
-              disabled={!model || busy || solving}
-              onClick={exportModel}
+              className="primary-action"
+              disabled={!ready || exporting}
+              onClick={() => {
+                void exportCard('png');
+              }}
             >
-              <FileJson size={16} />
-              保存数学配方
+              <Download size={16} />
+              {exporting
+                ? t('正在保存…', 'Saving…')
+                : t('保存数学自画像', 'Save math portrait')}
+            </Button>
+            <Button
+              variant="outline"
+              disabled={!ready}
+              onClick={() => {
+                void exportCard('svg');
+              }}
+            >
+              {t('卡片 SVG', 'Card SVG')}
             </Button>
             <Button
               variant="ghost"
-              disabled={!model || busy || solving}
-              onClick={svgExport}
+              disabled={!ready || !displayRecipe}
+              onClick={() => {
+                if (displayRecipe)
+                  save(
+                    new Blob([JSON.stringify(displayRecipe, null, 2)], {
+                      type: 'application/json',
+                    }),
+                    'sfumato-recipe.json',
+                  );
+              }}
             >
-              曲线 SVG
-            </Button>
-            <Button disabled={!stats || busy || solving} onClick={exportImage}>
-              <ArrowDownToLine size={16} />
-              保存肖像
+              <FileJson size={15} />
+              {t('数学配方', 'Recipe JSON')}
             </Button>
           </div>
           <details className="construction-explanation">
-            <summary>这幅画究竟是怎么构造的？</summary>
+            <summary>
+              {t(
+                '原理、更多导出与说明',
+                'How it works, more exports and notes',
+              )}
+            </summary>
             <p>
-              算法沿图像中的明暗边界追踪曲线，再用三次 Bézier
-              方程逼近。每段曲线保存两侧各三个明暗样本，另外保留 64
-              个粗略明暗锚点。其余位置通过离散 Laplace
-              方程求解，形成连续过渡。移动控制点时，明暗样本跟随曲线移动。
+              {t(
+                '算法提取图像明暗边界，用三次 Bézier 曲线拟合，再由曲线两侧采样和 64 个锚点求解明暗。配方可以交给 JavaScript 包直接重画。',
+                'The algorithm fits cubic Bézier curves to brightness boundaries, then reconstructs tone from samples beside them and 64 anchors. The recipe redraws directly with the JavaScript package.',
+              )}
             </p>
             <p>
-              目前找到的是图像边界，尚未识别出眼睑、鼻梁等人体部位；也没有恢复三维解剖结构。曲线变少不保证更美，参数数量也不等于文件压缩率。导出的
-              2000 像素图片来自 160 像素分析网格，不会凭空增加细节。
+              {t(
+                '它是二维图像构造，不识别解剖结构。明暗求解在 160×160 网格上进行，放大不会恢复额外细节。数值数量不是独立自由度或文件压缩率。',
+                'This is a 2D image construction, not anatomical reconstruction. Tone is solved on a 160×160 grid; enlargement adds no detail. Stored counts are neither independent degrees of freedom nor a file compression ratio.',
+              )}
             </p>
+            {result && (
+              <p>
+                {result.stats.iterations}{' '}
+                {t(
+                  '次迭代 · 最大调和残差',
+                  'iterations · maximum harmonic residual',
+                )}{' '}
+                {result.stats.residual.toExponential(2)} ·{' '}
+                {result.stats.converged
+                  ? t('达到停止阈值', 'stopping threshold reached')
+                  : t(
+                      '当前为近似解，未达到停止阈值',
+                      'approximate result; stopping threshold not reached',
+                    )}
+              </p>
+            )}
+            <div className="extra-exports">
+              <Button
+                variant="outline"
+                disabled={!ready}
+                onClick={() => {
+                  if (displayRecipe)
+                    save(
+                      new Blob([toSVG(displayRecipe)], {
+                        type: 'image/svg+xml',
+                      }),
+                      'sfumato-curves.svg',
+                    );
+                }}
+              >
+                {t('曲线 SVG', 'Curve SVG')}
+              </Button>
+              <Button
+                variant="outline"
+                disabled={!ready}
+                onClick={() => {
+                  if (!result) return;
+                  const buffer = document.createElement('canvas');
+                  buffer.width = buffer.height = 160;
+                  buffer
+                    .getContext('2d')
+                    ?.putImageData(
+                      new ImageData(
+                        new Uint8ClampedArray(result.image.data),
+                        160,
+                        160,
+                      ),
+                      0,
+                      0,
+                    );
+                  buffer.toBlob((blob) => {
+                    if (blob) save(blob, 'sfumato-portrait-160.png');
+                  });
+                }}
+              >
+                {t('明暗 PNG · 160px', 'Tonal PNG · 160px')}
+              </Button>
+            </div>
             <p>
-              数值求解：
-              {stats
-                ? `${stats.iterations} 次迭代，最大离散调和残差 ${stats.residual.toExponential(2)}。${stats.converged ? '已达到停止阈值。' : '尚未达到停止阈值，当前为近似解。'}`
-                : '等待构造。'}
-            </p>
-            <p>
-              示例：NASA 的 Eileen Collins 公开领域照片。
+              {t(
+                '示例：NASA / Eileen Collins，公开领域照片。',
+                'Example: NASA / Eileen Collins, public-domain photograph.',
+              )}{' '}
               <a
                 href="https://scikit-image.org/docs/stable/api/skimage.data.html#skimage.data.astronaut"
                 target="_blank"
                 rel="noreferrer"
               >
-                图片来源 ↗
+                {t('来源 ↗', 'Source ↗')}
               </a>
             </p>
           </details>
         </section>
       </div>
-      {message && <output className="toast">{message}</output>}
     </main>
   );
 }

@@ -1,0 +1,285 @@
+{
+  "settings": {
+    "surface_count": 8,
+    "reflectance_count": 4,
+    "bending": 2e-05,
+    "reflectance_smoothness": 0.02,
+    "slope_penalty": 1e-07,
+    "gauge_weight": 1.0,
+    "curve_weight": 10.0,
+    "ambient": 0.08,
+    "max_iterations": 100
+  },
+  "light": [
+    0.5,
+    -0.35,
+    1.0
+  ],
+  "new_light": [
+    -0.65,
+    0.3,
+    1.0
+  ],
+  "data": "analytic synthetic surfaces; uniform known true reflectance 0.6; no cast shadows or noise",
+  "records": [
+    {
+      "shape": "dome",
+      "mode": "calibrated_boundary",
+      "evaluation_grid": 73,
+      "training_grid": 41,
+      "surface_coefficient_count": 64,
+      "input_rmse": 0.0005243079197641482,
+      "height_rmse": 0.00028786068939336593,
+      "new_light_rmse": 0.0006127990564383753,
+      "normal_mean_degrees": 0.11175734501060496,
+      "reflectance_rmse": 0.0,
+      "status": "small_objective_change",
+      "steps": 5,
+      "initial_objective": 0.013964671061412514,
+      "final_losses": {
+        "photometric": 1.1919930450981386e-06,
+        "bending": 2.1706321444750926e-05,
+        "slope": 7.126256310260818e-09,
+        "curve_0": 5.1364547078744185e-09,
+        "total": 2.29105772008672e-05
+      },
+      "monotone_accepted_objective": true
+    },
+    {
+      "shape": "dome",
+      "mode": "unknown_reflectance_boundary",
+      "evaluation_grid": 73,
+      "training_grid": 41,
+      "surface_coefficient_count": 64,
+      "input_rmse": 0.0005477263968407433,
+      "height_rmse": 0.0013551334126374157,
+      "new_light_rmse": 0.0013481385516064576,
+      "normal_mean_degrees": 0.20756150294916664,
+      "reflectance_rmse": 0.0006984815628215601,
+      "status": "small_objective_change",
+      "steps": 5,
+      "initial_objective": 0.012553651960900986,
+      "final_losses": {
+        "photometric": 1.2705122726036302e-06,
+        "bending": 2.1284929572738278e-05,
+        "slope": 6.9888777530941175e-09,
+        "reflectance_smoothness": 1.3029712944440757e-07,
+        "curve_0": 4.984165718297873e-09,
+        "total": 2.2697712018257708e-05
+      },
+      "monotone_accepted_objective": true
+    },
+    {
+      "shape": "dome",
+      "mode": "unknown_reflectance_profiles",
+      "evaluation_grid": 73,
+      "training_grid": 41,
+      "surface_coefficient_count": 64,
+      "input_rmse": 0.0004966869080329037,
+      "height_rmse": 0.00019905398275820235,
+      "new_light_rmse": 0.0006351792366186617,
+      "normal_mean_degrees": 0.10805733915342959,
+      "reflectance_rmse": 0.00015586696977343286,
+      "status": "small_objective_change",
+      "steps": 5,
+      "initial_objective": 0.3214775634330626,
+      "final_losses": {
+        "photometric": 1.0640726101172705e-06,
+        "bending": 2.1805022130958536e-05,
+        "slope": 7.153002385131236e-09,
+        "reflectance_smoothness": 3.364933155184379e-08,
+        "curve_0": 5.80723343295762e-09,
+        "curve_1": 2.307861937201505e-07,
+        "total": 2.314649050216589e-05
+      },
+      "monotone_accepted_objective": true
+    },
+    {
+      "shape": "saddle",
+      "mode": "calibrated_boundary",
+      "evaluation_grid": 73,
+      "training_grid": 41,
+      "surface_coefficient_count": 64,
+      "input_rmse": 0.00019994874968637077,
+      "height_rmse": 0.00029790367092051963,
+      "new_light_rmse": 0.000447388288308011,
+      "normal_mean_degrees": 0.06837154279762997,
+      "reflectance_rmse": 0.0,
+      "status": "small_objective_change",
+      "steps": 4,
+      "initial_objective": 0.003132000366095286,
+      "final_losses": {
+        "photometric": 1.3624959983124359e-07,
+        "bending": 1.0281107136960374e-05,
+        "slope": 1.9582885337456303e-09,
+        "curve_0": 2.3079774002753154e-08,
+        "total": 1.0442394799328116e-05
+      },
+      "monotone_accepted_objective": true
+    },
+    {
+      "shape": "saddle",
+      "mode": "unknown_reflectance_boundary",
+      "evaluation_grid": 73,
+      "training_grid": 41,
+      "surface_coefficient_count": 64,
+      "input_rmse": 0.00023280727169559982,
+      "height_rmse": 0.0016925233297957944,
+      "new_light_rmse": 0.001789472979188226,
+      "normal_mean_degrees": 0.2573176727748368,
+      "reflectance_rmse": 0.0006439632969990432,
+      "status": "small_objective_change",
+      "steps": 4,
+      "initial_objective": 0.0030321536686209833,
+      "final_losses": {
+        "photometric": 1.866998799698097e-07,
+        "bending": 9.899773721089245e-06,
+        "slope": 1.882407833814751e-09,
+        "reflectance_smoothness": 1.3359783878274463e-07,
+        "curve_0": 1.8371304204326767e-08,
+        "total": 1.024032515187994e-05
+      },
+      "monotone_accepted_objective": true
+    },
+    {
+      "shape": "saddle",
+      "mode": "unknown_reflectance_profiles",
+      "evaluation_grid": 73,
+      "training_grid": 41,
+      "surface_coefficient_count": 64,
+      "input_rmse": 0.00019678836861668477,
+      "height_rmse": 0.0004053220606282754,
+      "new_light_rmse": 0.0008794692665643217,
+      "normal_mean_degrees": 0.10275179209244159,
+      "reflectance_rmse": 0.00031442567382937095,
+      "status": "small_objective_change",
+      "steps": 4,
+      "initial_objective": 0.0030321536686209833,
+      "final_losses": {
+        "photometric": 1.3473617612077843e-07,
+        "bending": 1.0117278392163673e-05,
+        "slope": 1.9259623526294175e-09,
+        "reflectance_smoothness": 8.49887757896222e-08,
+        "curve_0": 1.6803471633590938e-08,
+        "curve_1": 2.2292152373846296e-09,
+        "total": 1.0357961993297678e-05
+      },
+      "monotone_accepted_objective": true
+    },
+    {
+      "shape": "off_basis_bumps",
+      "mode": "calibrated_boundary",
+      "evaluation_grid": 73,
+      "training_grid": 41,
+      "surface_coefficient_count": 64,
+      "input_rmse": 0.006058837876722093,
+      "height_rmse": 0.004972013100452334,
+      "new_light_rmse": 0.012096023915688344,
+      "normal_mean_degrees": 1.3801692375749348,
+      "reflectance_rmse": 0.0,
+      "status": "small_objective_change",
+      "steps": 5,
+      "initial_objective": 0.010231957645254103,
+      "final_losses": {
+        "photometric": 0.0001308941823289459,
+        "bending": 2.7547173253532905e-05,
+        "slope": 5.6796371848140165e-09,
+        "curve_0": 1.4785700388142732e-06,
+        "total": 0.0001599256052584779
+      },
+      "monotone_accepted_objective": true
+    },
+    {
+      "shape": "off_basis_bumps",
+      "mode": "unknown_reflectance_boundary",
+      "evaluation_grid": 73,
+      "training_grid": 41,
+      "surface_coefficient_count": 64,
+      "input_rmse": 0.005914782795106105,
+      "height_rmse": 0.005132306800893198,
+      "new_light_rmse": 0.012809445076859187,
+      "normal_mean_degrees": 1.4649403175411795,
+      "reflectance_rmse": 0.0016650396950940788,
+      "status": "small_objective_change",
+      "steps": 7,
+      "initial_objective": 0.009457562701027,
+      "final_losses": {
+        "photometric": 0.00012415909459949858,
+        "bending": 2.7598592489636243e-05,
+        "slope": 5.693654770430583e-09,
+        "reflectance_smoothness": 2.997220659227243e-06,
+        "curve_0": 1.3194391621237998e-06,
+        "total": 0.0001560800405652563
+      },
+      "monotone_accepted_objective": true
+    },
+    {
+      "shape": "off_basis_bumps",
+      "mode": "unknown_reflectance_profiles",
+      "evaluation_grid": 73,
+      "training_grid": 41,
+      "surface_coefficient_count": 64,
+      "input_rmse": 0.006152999140992427,
+      "height_rmse": 0.007328782291163836,
+      "new_light_rmse": 0.013740398110170445,
+      "normal_mean_degrees": 1.7472649467867423,
+      "reflectance_rmse": 0.004484597091242012,
+      "status": "small_objective_change",
+      "steps": 5,
+      "initial_objective": 0.0808993494249449,
+      "final_losses": {
+        "photometric": 0.00013745697843292436,
+        "bending": 2.6791826911929326e-05,
+        "slope": 5.29290959888874e-09,
+        "reflectance_smoothness": 6.886008634816855e-06,
+        "curve_0": 1.7287709331748142e-06,
+        "curve_1": 4.048188181796869e-05,
+        "total": 0.00021335075964041292
+      },
+      "monotone_accepted_objective": true
+    },
+    {
+      "shape": "off_basis_bumps",
+      "mode": "refined_unknown_reflectance_profiles",
+      "evaluation_grid": 73,
+      "training_grid": 41,
+      "surface_coefficient_count": 169,
+      "input_rmse": 0.0006888255362385291,
+      "height_rmse": 0.0006733677166607885,
+      "new_light_rmse": 0.0013620560505756517,
+      "normal_mean_degrees": 0.17311666538317208,
+      "reflectance_rmse": 0.00039580902669109487,
+      "status": "small_objective_change",
+      "steps": 5,
+      "initial_objective": 0.0808993494249449,
+      "final_losses": {
+        "photometric": 1.8199400370685063e-06,
+        "bending": 2.5028073742744043e-05,
+        "slope": 5.488471130438934e-09,
+        "reflectance_smoothness": 4.140513145919579e-08,
+        "curve_0": 1.46067832799812e-08,
+        "curve_1": 1.1423782062477845e-07,
+        "total": 2.7023751986306942e-05
+      },
+      "monotone_accepted_objective": true
+    }
+  ],
+  "indistinguishable_pair": {
+    "construction": "rho_flat = I_curved / shading_flat; no shape estimator can distinguish identical input pixels without extra assumptions or observations",
+    "same_light": [
+      0.5,
+      -0.35,
+      1.0
+    ],
+    "maximum_pixel_difference": 5.551115123125783e-17,
+    "true_height_rmse_between_pair": 0.11221917809829879,
+    "flat_reflectance_range": [
+      0.4393632432029199,
+      0.6833540852609565
+    ],
+    "new_light_rmse_between_pair": 0.11845484149370329
+  },
+  "elapsed_seconds": 0.3330264580436051,
+  "claims": "Finite synthetic controls only; external oracle curves are not extracted from photographs; no real-face geometry validation.",
+  "followup": "The 13x13 refinement was added AFTER observing the 8x8 off-basis profile failure. It doubles knot spans with the same regularization weights; this is a targeted diagnostic, not a pre-registered generalization success or automatic model selection."
+}

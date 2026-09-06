@@ -1,0 +1,92 @@
+[
+  {
+    "budget": 0,
+    "iterations": 3,
+    "sha256": "3b08fe778f77c706dba6dc49767ea0a545f5bff800ed98dada45c8e47d7e2e99",
+    "stats": {
+      "curves": 0,
+      "segments": 0,
+      "scalarParameters": 192,
+      "constraints": 64,
+      "iterations": 3,
+      "maxChange": 0.11091461888066029,
+      "residual": 0.040437621466907325,
+      "converged": false
+    }
+  },
+  {
+    "budget": 0,
+    "iterations": 500,
+    "sha256": "4835964cd7b30403c03f90ff7a969536ef3610755c664cfa34d46a4efae77113",
+    "stats": {
+      "curves": 0,
+      "segments": 0,
+      "scalarParameters": 192,
+      "constraints": 64,
+      "iterations": 406,
+      "maxChange": 0.000009947477596639054,
+      "residual": 0.000005597931588718907,
+      "converged": true
+    }
+  },
+  {
+    "budget": 1,
+    "iterations": 3,
+    "sha256": "41738cc1cb94454ee7e1af5b7b35d13bca7bfbe30851928df81ae862ff1bc6a1",
+    "stats": {
+      "curves": 1,
+      "segments": 26,
+      "scalarParameters": 556,
+      "constraints": 765,
+      "iterations": 3,
+      "maxChange": 0.34239756460441095,
+      "residual": 0.15526128580085746,
+      "converged": false
+    }
+  },
+  {
+    "budget": 1,
+    "iterations": 500,
+    "sha256": "34d65d37b87adddffe63ba15a67cae3af88eec6ba62f0277a77383d92b1f933c",
+    "stats": {
+      "curves": 1,
+      "segments": 26,
+      "scalarParameters": 556,
+      "constraints": 765,
+      "iterations": 354,
+      "maxChange": 0.000009991325089150904,
+      "residual": 0.00000558918506704531,
+      "converged": true
+    }
+  },
+  {
+    "budget": 1,
+    "iterations": 3,
+    "sha256": "41738cc1cb94454ee7e1af5b7b35d13bca7bfbe30851928df81ae862ff1bc6a1",
+    "stats": {
+      "curves": 1,
+      "segments": 26,
+      "scalarParameters": 556,
+      "constraints": 765,
+      "iterations": 3,
+      "maxChange": 0.34239756460441095,
+      "residual": 0.15526128580085746,
+      "converged": false
+    }
+  },
+  {
+    "budget": 1,
+    "iterations": 500,
+    "sha256": "34d65d37b87adddffe63ba15a67cae3af88eec6ba62f0277a77383d92b1f933c",
+    "stats": {
+      "curves": 1,
+      "segments": 26,
+      "scalarParameters": 556,
+      "constraints": 765,
+      "iterations": 354,
+      "maxChange": 0.000009991325089150904,
+      "residual": 0.00000558918506704531,
+      "converged": true
+    }
+  }
+]

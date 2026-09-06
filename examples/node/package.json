@@ -1,0 +1,9 @@
+{
+  "name": "sfumato-node-example",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@shen-chenyu/sfumato": "file:../../packages/sfumato",
+    "sharp": "0.35.4"
+  }
+}

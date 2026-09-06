@@ -13,7 +13,6 @@ import {
   Play,
   RotateCcw,
   Shuffle,
-  Sparkles,
   Upload,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -118,8 +117,7 @@ export default function Studio() {
   const [focus, setFocus] = useState<[number, number]>([0.48, 0.52]),
     [focusMode, setFocusMode] = useState(false),
     [toast, setToast] = useState(''),
-    [revision, setRevision] = useState(0),
-    [savedAt, setSavedAt] = useState<number | null>(null);
+    [revision, setRevision] = useState(0);
   const canvas = useRef<HTMLCanvasElement>(null),
     input = useRef<HTMLInputElement>(null),
     worker = useRef<Worker | null>(null),
@@ -135,7 +133,6 @@ export default function Studio() {
     setProgress(0);
     setError('');
     setPlaying(false);
-    setSavedAt(null);
     setCount(0);
     setResult(null);
     worker.current?.terminate();
@@ -173,10 +170,8 @@ export default function Studio() {
           } else if (data.type === 'result') {
             setResult(data.result);
             setBusy(false);
-            setCount(Math.min(100, data.result.strokes.length));
-            setPlaying(
-              !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-            );
+            setCount(data.result.strokes.length);
+            setPlaying(false);
             wkr.terminate();
           } else {
             setBusy(false);
@@ -375,7 +370,7 @@ export default function Studio() {
           sfumato<span>.</span>
         </a>
         <span className="top-note">
-          A little less image. A little more imagination.
+          Computational portrait studies
         </span>
         <a className="source-link" href={base || '/'}>
           数学构造 <ArrowUpRight size={15} />
@@ -644,7 +639,7 @@ export default function Studio() {
           <div className="playback">
             <div className="playback-heading">
               <div>
-                <span className="eyebrow">WATCH IT BECOME SOMETHING</span>
+                <span className="eyebrow">CONSTRUCTION SEQUENCE</span>
                 <p>
                   <strong>{count.toLocaleString()}</strong>
                   <span> / {total.toLocaleString()} strokes</span>
@@ -689,23 +684,13 @@ export default function Studio() {
               onValueChange={(v) => seek(Array.isArray(v) ? v[0] : v)}
             />
             <div className="milestones">
-              {savedAt !== null && savedAt !== count && (
-                <button onClick={() => seek(savedAt)}>
-                  Your enough · {savedAt}
-                </button>
-              )}
               {[100, 300, 900].map((n) => (
                 <button
                   key={n}
                   disabled={!result || n > total}
                   onClick={() => seek(n)}
                 >
-                  {n} ·{' '}
-                  {n === 100
-                    ? 'a suggestion'
-                    : n === 300
-                      ? 'a likeness'
-                      : 'a little more'}
+                  {n} strokes
                 </button>
               ))}
             </div>
@@ -713,13 +698,7 @@ export default function Studio() {
           <div className="insight">
             <span>↳</span>
             <div>
-              <strong>
-                {count < 100
-                  ? 'How few marks can say enough?'
-                  : count < 400
-                    ? 'The important things arrive first.'
-                    : 'More marks. But is it a better picture?'}
-              </strong>
+              <strong>Selection objective</strong>
               <p>
                 {busy
                   ? 'The algorithm is weighing one possible stroke against another.'
@@ -736,19 +715,6 @@ export default function Studio() {
             </span>
           </div>
           <div className="export-bar">
-            <Button
-              variant="ghost"
-              className="keep-button"
-              disabled={!result || !count}
-              onClick={() => {
-                setSavedAt(count);
-                setPlaying(false);
-                setToast(`Your “enough” is ${count} strokes.`);
-              }}
-            >
-              <Sparkles size={16} />
-              {savedAt === count ? 'This is enough.' : 'This is the moment.'}
-            </Button>
             <div>
               <Button variant="ghost" disabled={!result} onClick={exportRecipe}>
                 Get the recipe
@@ -796,7 +762,7 @@ export default function Studio() {
             target="_blank"
             rel="noreferrer"
           >
-            Play with the source <ArrowUpRight size={14} />
+            Source code <ArrowUpRight size={14} />
           </a>
         </div>
         <div className="about-copy">

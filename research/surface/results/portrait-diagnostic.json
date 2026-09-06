@@ -1,0 +1,56 @@
+{
+  "input": "portrait.png",
+  "preprocessing": {
+    "source_size": [
+      230,
+      230
+    ],
+    "center_square_crop": [
+      0,
+      0,
+      230,
+      230
+    ],
+    "transfer": "nominal sRGB inverse transfer, then linear Rec.709 luminance; image exposure is not calibrated"
+  },
+  "valid_pixels": 2177,
+  "masked_pixels": 224,
+  "scalar_coefficients": 80,
+  "assumed_light": [
+    0.5,
+    -0.35,
+    1.0
+  ],
+  "new_assumed_light": [
+    -0.65,
+    0.3,
+    1.0
+  ],
+  "external_curve_count": 0,
+  "valid_pixel_linear_rmse": 0.11955300141399244,
+  "all_pixel_linear_rmse": 0.11678499263004785,
+  "height_range": [
+    -1.9992737842856312,
+    1.5419304881803888
+  ],
+  "slope_magnitude_quantiles_50_90_99": [
+    1.8058154598999816,
+    3.526467026887016,
+    9.333520001775245
+  ],
+  "height_display_clipped_fraction": 0.44142578125,
+  "reflectance_display_clipped_fraction": 0.0,
+  "reconstruction_display_clipped_fraction": 0.0,
+  "defined_principal_direction_fraction": 1.0,
+  "solver_status": "small_objective_change",
+  "accepted_steps": 59,
+  "final_losses": {
+    "photometric": 0.2650718079762199,
+    "bending": 0.008282529217166008,
+    "slope": 8.575698977077673e-07,
+    "height_gauge": 2.0620743164981699e-07,
+    "reflectance_smoothness": 0.0059140277710994765,
+    "total": 0.2792694287418147
+  },
+  "true_depth_validation": null
+}

@@ -1,15 +1,15 @@
 import type { Metadata } from 'next';
 import './globals.css';
 export const metadata: Metadata = {
-  title: 'Sfumato · the moment you recognize it',
+  title: 'Sfumato · 多少数学，能描绘你？',
   description:
-    'Watch a hidden photograph emerge from mathematical curves. Stop when you recognize it, reveal the original, and see how much you can take away. Photos stay on your device.',
+    'How much math describes you? 从照片生成数学自画像、真实方程与可重画的配方。完全本地计算。',
 };
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
+    <html lang="zh-CN">
       <body>{children}</body>
     </html>
   );

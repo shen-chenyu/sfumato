@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Worker } from 'node:worker_threads';
 import { once } from 'node:events';
-test(
-  'the actual worker constructs the reveal order, transfers a frame and reports malformed recipes',
+await test(
+  'the actual worker constructs curves, transfers a frame and reports malformed recipes',
   { timeout: 10000 },
   async () => {
     const path = new URL('../public/construct.worker.mjs', import.meta.url)
@@ -29,11 +29,11 @@ test(
       worker.postMessage({
         type: 'construct',
         pixels,
-        settings: { reveal: true },
+        settings: {},
       });
       const [modelMessage] = await once(worker, 'message');
       assert.equal(modelMessage.type, 'model');
-      assert.equal(modelMessage.model.ordering, 'compact-center-v1');
+      assert.ok(modelMessage.model.curves.length > 0);
       const budget = Math.min(5, modelMessage.model.curves.length);
       worker.postMessage({
         type: 'render',

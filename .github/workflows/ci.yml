@@ -12,7 +12,12 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
-      - run: npm run lint
       - run: npm test
+      - run: npm run lint
       - run: npm run typecheck
       - run: npm run build
+      - run: npm run package:pack
+      - run: npm ci
+        working-directory: examples/node
+      - run: node portrait.mjs ../../public/portrait.png /tmp/sfumato-example zh-CN
+        working-directory: examples/node

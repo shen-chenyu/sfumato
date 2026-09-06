@@ -2,3 +2,12 @@
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
 @import './studio.css';
+:root {
+  --portrait-ink: #252c35;
+  --portrait-muted: #5f6a78;
+  --portrait-line: #d9dfe6;
+  --portrait-accent: #284ed8;
+}
+body:has(.construction-app) {
+  background: #f6f7fa;
+}

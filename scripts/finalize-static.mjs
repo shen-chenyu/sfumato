@@ -38,11 +38,12 @@ for (const file of [
   'engine.worker.mjs',
   'engine.mjs',
   'portrait.png',
+  'portrait.mjs',
+  'portrait.worker.mjs',
   'construct.worker.mjs',
   'construct-engine.mjs',
   'strokes/index.html',
   'construct/index.html',
-  'reveal-state.mjs',
 ])
   await stat(resolve(root, file));
 await writeFile(resolve(root, '.nojekyll'), '');

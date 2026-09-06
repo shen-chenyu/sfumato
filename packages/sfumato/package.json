@@ -1,0 +1,22 @@
+{
+  "name": "@shen-chenyu/sfumato",
+  "version": "0.1.0",
+  "description": "Photographs reconstructed from editable mathematical curves. No image AI, no runtime dependencies.",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs"
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "files": ["dist", "README.md", "README.zh-CN.md", "LICENSE"],
+  "sideEffects": false,
+  "engines": { "node": ">=18" },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shen-chenyu/sfumato.git",
+    "directory": "packages/sfumato"
+  }
+}

@@ -267,15 +267,19 @@ export function construct(rgba, { tolerance = 0.8 } = {}) {
         return {
           id,
           score: c.points.length * c.strength * attention,
-          segments: fitCurve(c.points, tolerance).map((s) => ({
-            ...s,
-            tones: sideTone(gray, s.controls),
-          })),
+          points: c.points,
           sourceLength: c.points.length,
         };
       })
       .sort((a, b) => b.score - a.score)
-      .slice(0, 180);
+      .slice(0, 180)
+      .map(({ points, ...curve }) => ({
+        ...curve,
+        segments: fitCurve(points, tolerance).map((s) => ({
+          ...s,
+          tones: sideTone(gray, s.controls),
+        })),
+      }));
   const anchors = [];
   for (let y = 0; y < 8; y++)
     for (let x = 0; x < 8; x++) {
@@ -310,6 +314,7 @@ export function validateConstruction(model) {
   let segments = 0;
   for (const c of model.curves) {
     if (
+      !c ||
       !Number.isInteger(c.id) ||
       ids.has(c.id) ||
       !Array.isArray(c.segments) ||
@@ -318,8 +323,10 @@ export function validateConstruction(model) {
       throw Error('Invalid curve.');
     ids.add(c.id);
     segments += c.segments.length;
+    if (segments > 3000) throw Error('Too many curve segments.');
     for (const s of c.segments) {
       if (
+        !s ||
         !Array.isArray(s.controls) ||
         s.controls.length !== 4 ||
         s.controls.some(
@@ -343,6 +350,7 @@ export function validateConstruction(model) {
   if (segments > 3000) throw Error('Too many curve segments.');
   for (const a of model.anchors)
     if (
+      !a ||
       !finite(a.x, 0, SIZE - 1) ||
       !finite(a.y, 0, SIZE - 1) ||
       !finite(a.value, 0, 1)
@@ -406,68 +414,63 @@ export function reconstruct(
         }
       }
     }
-  const field = new Float64Array(m).fill(
+  const field = new Float64Array(m + 1).fill(
     model.anchors.reduce((a, p) => a + p.value, 0) / model.anchors.length,
   );
+  field[m] = 0; // Sentinel for missing neighbours at the image boundary.
   let constraints = 0;
   for (let k = 0; k < m; k++)
     if (weight[k]) {
       field[k] = values[k] / weight[k];
       constraints++;
     }
+  // Cache the free-cell stencil in the original red/black iteration order.
+  // The constraints do not move during a solve, so neither do these neighbours.
+  const stencil = new Int32Array((m - constraints) * 6);
+  let offset = 0;
+  for (let parity = 0; parity < 2; parity++)
+    for (let y = 0; y < n; y++)
+      for (let x = (y + parity) % 2; x < n; x += 2) {
+        const k = y * n + x;
+        if (weight[k]) continue;
+        stencil[offset++] = k;
+        stencil[offset++] = x ? k - 1 : m;
+        stencil[offset++] = x < n - 1 ? k + 1 : m;
+        stencil[offset++] = y ? k - n : m;
+        stencil[offset++] = y < n - 1 ? k + n : m;
+        stencil[offset++] =
+          Number(x > 0) + Number(x < n - 1) + Number(y > 0) + Number(y < n - 1);
+      }
   let completed = 0,
     maxChange = Infinity;
   for (let it = 0; it < iterations; it++) {
     maxChange = 0;
-    for (let parity = 0; parity < 2; parity++)
-      for (let y = 0; y < n; y++)
-        for (let x = (y + parity) % 2; x < n; x += 2) {
-          const k = y * n + x;
-          if (weight[k]) continue;
-          let sum = 0,
-            degree = 0;
-          if (x) {
-            sum += field[k - 1];
-            degree++;
-          }
-          if (x < n - 1) {
-            sum += field[k + 1];
-            degree++;
-          }
-          if (y) {
-            sum += field[k - n];
-            degree++;
-          }
-          if (y < n - 1) {
-            sum += field[k + n];
-            degree++;
-          }
-          const delta = 1.75 * (sum / degree - field[k]);
-          field[k] += delta;
-          maxChange = Math.max(maxChange, Math.abs(delta));
-        }
+    for (let j = 0; j < stencil.length; j += 6) {
+      const k = stencil[j];
+      const sum =
+        field[stencil[j + 1]] +
+        field[stencil[j + 2]] +
+        field[stencil[j + 3]] +
+        field[stencil[j + 4]];
+      const delta = 1.75 * (sum / stencil[j + 5] - field[k]);
+      field[k] += delta;
+      maxChange = Math.max(maxChange, Math.abs(delta));
+    }
     completed = it + 1;
     if (maxChange < tolerance) break;
   }
   let residual = 0;
-  for (let y = 0; y < n; y++)
-    for (let x = 0; x < n; x++) {
-      const k = y * n + x;
-      if (weight[k]) continue;
-      let sum = 0,
-        degree = 0;
-      for (const [j, ok] of [
-        [k - 1, x > 0],
-        [k + 1, x < n - 1],
-        [k - n, y > 0],
-        [k + n, y < n - 1],
-      ])
-        if (ok) {
-          sum += field[j];
-          degree++;
-        }
-      residual = Math.max(residual, Math.abs(field[k] - sum / degree));
-    }
+  for (let j = 0; j < stencil.length; j += 6) {
+    const sum =
+      field[stencil[j + 1]] +
+      field[stencil[j + 2]] +
+      field[stencil[j + 3]] +
+      field[stencil[j + 4]];
+    residual = Math.max(
+      residual,
+      Math.abs(field[stencil[j]] - sum / stencil[j + 5]),
+    );
+  }
   const pixels = new Uint8ClampedArray(m * 4);
   for (let i = 0; i < m; i++) {
     const v = clamp(field[i], 0, 1);
@@ -531,27 +534,4 @@ export function moveControlPoint(model, id, index, handle, x, y) {
     }
   }
   return updated;
-}
-
-/** Reveal ordering favors compact central detail over very long boundary chains.
- * It is an image-space heuristic, not anatomical detection or optimal selection.
- */
-export function rankForReveal(model) {
-  const curves = model.curves
-    .map((c) => {
-      const points = c.segments.flatMap((s) => [s.controls[0], s.controls[3]]),
-        x = points.reduce((a, p) => a + p[0] / SIZE, 0) / points.length,
-        y = points.reduce((a, p) => a + p[1] / SIZE, 0) / points.length;
-      const focus =
-          1 + 4 * Math.exp(-((x - 0.5) ** 2 + (y - 0.48) ** 2) / 0.065),
-        length = Math.max(1, c.sourceLength ?? points.length);
-      return {
-        ...c,
-        revealPriority:
-          (((c.score ?? 1) / Math.sqrt(length)) * focus) /
-          (1 + 0.1 * c.segments.length),
-      };
-    })
-    .sort((a, b) => b.revealPriority - a.revealPriority || a.id - b.id);
-  return { ...model, curves, ordering: 'compact-center-v1' };
 }
